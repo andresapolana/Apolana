@@ -9,13 +9,16 @@
 :root{--dark:#0d0f14;--dark2:#141720;--dark3:#1e2230;--card:#181c28;--border:#2a2f42;--accent:#e8ff47;--text:#e8eaf2;--text2:#8891aa;--red:#ff4747;}
 *{margin:0;padding:0;box-sizing:border-box;-webkit-tap-highlight-color:transparent;}
 body{background:var(--dark);color:var(--text);font-family:'DM Sans',sans-serif;padding-bottom:90px;}
-.hdr{background:var(--card);border-bottom:1px solid var(--border);padding:14px 16px;display:flex;align-items:center;gap:12px;position:sticky;top:0;z-index:99;}
+
+.hdr{background:var(--card);border-bottom:1px solid var(--border);padding:13px 15px;display:flex;align-items:center;gap:11px;position:sticky;top:0;z-index:99;}
 .lm{width:36px;height:36px;background:var(--accent);border-radius:7px;display:flex;align-items:center;justify-content:center;flex-shrink:0;}
 .lm span{font-family:'Bebas Neue';font-size:19px;color:#0d0f14;}
 .lt{font-family:'Bebas Neue';font-size:17px;letter-spacing:1px;}
 .ls{font-size:9px;color:var(--text2);letter-spacing:.5px;text-transform:uppercase;}
-.wrap{padding:14px 14px;max-width:700px;margin:0 auto;}
+
+.wrap{padding:14px;max-width:700px;margin:0 auto;}
 .stitle{font-family:'Bebas Neue';font-size:15px;letter-spacing:1px;color:var(--accent);padding:18px 0 8px;border-bottom:1px solid var(--border);margin-bottom:12px;}
+
 .field{margin-bottom:11px;}
 .field label{display:block;font-size:10px;text-transform:uppercase;letter-spacing:.8px;color:var(--text2);margin-bottom:4px;}
 .field input,.field select,.field textarea{width:100%;background:var(--dark2);border:1px solid var(--border);border-radius:8px;color:var(--text);font-family:'DM Sans';font-size:15px;padding:11px 13px;outline:none;-webkit-appearance:none;}
@@ -29,7 +32,7 @@ body{background:var(--dark);color:var(--text);font-family:'DM Sans',sans-serif;p
 .dl{display:flex;align-items:center;gap:9px;}
 .dn{font-family:'Bebas Neue';font-size:19px;letter-spacing:1px;}
 .dk{font-size:10px;font-family:'DM Mono';color:var(--accent);background:rgba(232,255,71,.12);padding:3px 8px;border-radius:20px;}
-.ch{color:var(--text2);font-size:18px;transition:transform .25s;display:inline-block;line-height:1;}
+.ch{color:var(--text2);font-size:18px;transition:transform .25s;display:inline-block;}
 .dc.op .ch{transform:rotate(180deg);}
 .db{display:none;border-top:1px solid var(--border);padding:13px;}
 .dc.op .db{display:block;}
@@ -40,13 +43,19 @@ body{background:var(--dark);color:var(--text);font-family:'DM Sans',sans-serif;p
 .of input:focus{border-color:var(--accent);}
 
 /* BLOCK */
-.bi{background:var(--dark3);border:1px solid var(--border);border-radius:7px;margin-bottom:6px;padding:7px 11px;display:flex;align-items:center;gap:8px;}
+.bi{background:var(--dark3);border:1px solid var(--border);border-radius:7px;margin-bottom:4px;padding:7px 11px;display:flex;align-items:center;gap:8px;}
 .bd{width:5px;height:5px;border-radius:50%;background:var(--accent);flex-shrink:0;}
 .bi input{flex:1;background:transparent;border:none;color:var(--accent);font-family:'Bebas Neue';font-size:13px;letter-spacing:1px;outline:none;min-width:0;}
 .bx{background:none;border:none;color:var(--text2);cursor:pointer;font-size:15px;padding:0 3px;}
 
+/* INSERT ROW — after each block */
+.ins-row{display:flex;gap:6px;margin-bottom:8px;margin-top:2px;padding-left:8px;}
+.ins-btn{padding:5px 12px;border-radius:6px;font-family:'DM Sans';font-size:11px;font-weight:600;cursor:pointer;border:1px dashed var(--border);background:transparent;color:var(--text2);}
+.ins-btn:active{border-color:var(--accent);color:var(--accent);}
+.ins-btn.p{border-color:rgba(232,255,71,.3);color:var(--accent);}
+
 /* EX */
-.ei{background:var(--dark2);border:1px solid var(--border);border-radius:8px;margin-bottom:6px;}
+.ei{background:var(--dark2);border:1px solid var(--border);border-radius:8px;margin-bottom:4px;}
 .et{display:flex;align-items:center;gap:6px;padding:9px 10px;border-bottom:1px solid var(--border);}
 .en{flex:1;background:transparent;border:none;color:var(--text);font-family:'DM Sans';font-size:14px;outline:none;min-width:0;}
 .en::placeholder{color:var(--text2);}
@@ -61,8 +70,8 @@ body{background:var(--dark);color:var(--text);font-family:'DM Sans',sans-serif;p
 .eo input{width:100%;background:transparent;border:none;color:var(--text2);font-family:'DM Sans';font-size:12px;outline:none;}
 .eo input::placeholder{color:#4a5168;}
 
-/* BUTTONS */
-.ar{display:flex;gap:8px;margin-top:4px;}
+/* BOTTOM ADD */
+.ar{display:flex;gap:8px;margin-top:8px;}
 .ab{flex:1;padding:11px 8px;border-radius:8px;font-family:'DM Sans';font-size:13px;font-weight:500;cursor:pointer;border:1px solid var(--border);background:transparent;color:var(--text2);text-align:center;}
 .ab.p{background:var(--accent);color:#0d0f14;border-color:var(--accent);font-weight:700;}
 
@@ -70,9 +79,6 @@ body{background:var(--dark);color:var(--text);font-family:'DM Sans',sans-serif;p
 .gw{position:fixed;bottom:0;left:0;right:0;background:var(--card);border-top:1px solid var(--border);padding:11px 14px;z-index:99;}
 .gb{width:100%;background:var(--accent);color:#0d0f14;border:none;border-radius:10px;padding:15px;font-family:'Bebas Neue';font-size:21px;letter-spacing:2px;cursor:pointer;}
 .gb:active{background:#d4eb3a;}
-
-/* loading */
-.loading{text-align:center;padding:12px;color:var(--text2);font-size:13px;}
 </style>
 </head>
 <body>
@@ -105,81 +111,73 @@ body{background:var(--dark);color:var(--text);font-family:'DM Sans',sans-serif;p
 <div class="gw"><button class="gb" id="genbtn">⬇ GENERAR PDF</button></div>
 
 <script>
-// Load jsPDF dynamically after page loads
+// Load jsPDF
 var jsPDFLoaded = false;
-var jsPDFScript = document.createElement('script');
-jsPDFScript.src = 'https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js';
-jsPDFScript.onload = function() { jsPDFLoaded = true; };
-document.head.appendChild(jsPDFScript);
+var s = document.createElement('script');
+s.src = 'https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js';
+s.onload = function(){ jsPDFLoaded = true; };
+document.head.appendChild(s);
 
 var DAYS = ['Lunes','Martes','Miércoles','Jueves','Viernes','Sábado'];
 var rid = 0;
-function gid() { return 'r'+(rid++); }
+function gid(){ return 'n'+(rid++); }
 
 var dr = document.getElementById('dr');
 
-// Build all day cards first, then populate
-DAYS.forEach(function(name, di) {
+DAYS.forEach(function(name, di){
   var card = document.createElement('div');
   card.className = 'dc';
   card.id = 'dc'+di;
 
-  // Header
   var hdr = document.createElement('div');
   hdr.className = 'dh';
-  hdr.innerHTML = '<div class="dl"><span class="dn">'+name+'</span><span class="dk" id="ck'+di+'">0 ejercicios</span></div><span class="ch">▾</span>';
-  hdr.onclick = function() { card.classList.toggle('op'); };
+  hdr.innerHTML =
+    '<div class="dl"><span class="dn">'+name+'</span><span class="dk" id="ck'+di+'">0 ejercicios</span></div>'+
+    '<span class="ch">▾</span>';
+  hdr.addEventListener('click', function(){ card.classList.toggle('op'); });
 
-  // Body
   var body = document.createElement('div');
   body.className = 'db';
   body.innerHTML =
     '<div class="of"><label>Objetivo del día</label><input id="oj'+di+'" placeholder="Objetivo de esta sesión..."></div>'+
     '<div id="li'+di+'"></div>'+
     '<div class="ar">'+
-    '<button class="ab p" id="aex'+di+'">+ Ejercicio</button>'+
-    '<button class="ab" id="abl'+di+'">+ Bloque</button>'+
+    '<button class="ab p" id="aex'+di+'">+ Ejercicio al final</button>'+
+    '<button class="ab" id="abl'+di+'">+ Bloque al final</button>'+
     '</div>';
 
   card.appendChild(hdr);
   card.appendChild(body);
   dr.appendChild(card);
+
+  document.getElementById('aex'+di).addEventListener('click', function(e){
+    e.stopPropagation(); addEx(di, null);
+  });
+  document.getElementById('abl'+di).addEventListener('click', function(e){
+    e.stopPropagation(); addBlock(di, '', null);
+  });
+
+  // Default structure
+  addBlock(di, 'PARTE INICIAL', null);
+  addEx(di, null);
+  addBlock(di, 'PARTE PRINCIPAL', null);
+  addEx(di, null);
+  addBlock(di, 'VUELTA A LA CALMA', null);
+  addEx(di, null);
 });
 
-// Wire buttons and add defaults after all cards exist
-DAYS.forEach(function(name, di) {
-  document.getElementById('aex'+di).addEventListener('click', function(e) {
-    e.stopPropagation();
-    addEx(di);
-  });
-  document.getElementById('abl'+di).addEventListener('click', function(e) {
-    e.stopPropagation();
-    addBlock(di, '');
-  });
-  // Default rows
-  addBlock(di, 'PARTE INICIAL');
-  addEx(di);
-  addBlock(di, 'PARTE PRINCIPAL');
-  addEx(di);
-  addBlock(di, 'VUELTA A LA CALMA');
-  addEx(di);
-});
+function getList(di){ return document.getElementById('li'+di); }
 
-function getList(di) { return document.getElementById('li'+di); }
-
-function updateCount(di) {
-  var list = getList(di);
-  var items = list.querySelectorAll('.ei');
+function updateCount(di){
+  var items = getList(di).querySelectorAll('.ei');
   var n = 0;
-  items.forEach(function(el) {
-    var inp = el.querySelector('.en');
-    if (inp && inp.value.trim()) n++;
-  });
+  items.forEach(function(el){ if(el.querySelector('.en').value.trim()) n++; });
   var el = document.getElementById('ck'+di);
-  if (el) el.textContent = n + ' ejercicio' + (n!==1?'s':'');
+  if(el) el.textContent = n+' ejercicio'+(n!==1?'s':'');
 }
 
-function addEx(di) {
+// insertAfter: DOM element to insert after, or null for append
+function addEx(di, insertAfterEl){
   var list = getList(di);
   var id = gid();
   var div = document.createElement('div');
@@ -188,7 +186,7 @@ function addEx(di) {
   div.innerHTML =
     '<div class="et">'+
     '<input class="en" type="text" placeholder="Ejercicio...">'+
-    '<button class="ex">✕</button>'+
+    '<button class="ex" title="Eliminar">✕</button>'+
     '</div>'+
     '<div class="eb">'+
     '<div class="ec"><label>Series</label><input type="text" placeholder="3x5"></div>'+
@@ -197,79 +195,102 @@ function addEx(di) {
     '</div>'+
     '<div class="eo"><input type="text" placeholder="Observaciones..."></div>';
 
-  div.querySelector('.ex').addEventListener('click', function(e) {
-    e.stopPropagation();
-    div.remove();
-    updateCount(di);
+  div.querySelector('.ex').addEventListener('click', function(e){
+    e.stopPropagation(); div.remove(); updateCount(di);
   });
-  div.querySelector('.en').addEventListener('input', function() { updateCount(di); });
-  list.appendChild(div);
+  div.querySelector('.en').addEventListener('input', function(){ updateCount(di); });
+
+  if(insertAfterEl && insertAfterEl.nextSibling){
+    list.insertBefore(div, insertAfterEl.nextSibling);
+  } else {
+    list.appendChild(div);
+  }
   updateCount(di);
 }
 
-function addBlock(di, name) {
+function addBlock(di, name, insertAfterEl){
   var list = getList(di);
   var id = gid();
+
+  // Wrapper: block + insert row
+  var wrap = document.createElement('div');
+  wrap.id = id+'-wrap';
+
   var div = document.createElement('div');
   div.className = 'bi';
   div.id = id;
   div.innerHTML =
     '<div class="bd"></div>'+
     '<input type="text" value="'+(name||'')+'" placeholder="NOMBRE DEL BLOQUE...">'+
-    '<button class="bx">✕</button>';
-  div.querySelector('.bx').addEventListener('click', function(e) {
-    e.stopPropagation();
-    div.remove();
+    '<button class="bx" title="Eliminar bloque">✕</button>';
+
+  // Insert row below block
+  var insRow = document.createElement('div');
+  insRow.className = 'ins-row';
+  insRow.innerHTML =
+    '<button class="ins-btn p">+ Ejercicio aquí</button>'+
+    '<button class="ins-btn">+ Bloque aquí</button>';
+
+  // Wire insert buttons — insert AFTER the wrap
+  insRow.querySelectorAll('.ins-btn')[0].addEventListener('click', function(e){
+    e.stopPropagation(); addEx(di, wrap);
   });
-  list.appendChild(div);
+  insRow.querySelectorAll('.ins-btn')[1].addEventListener('click', function(e){
+    e.stopPropagation(); addBlock(di, '', wrap);
+  });
+
+  div.querySelector('.bx').addEventListener('click', function(e){
+    e.stopPropagation(); wrap.remove();
+  });
+
+  wrap.appendChild(div);
+  wrap.appendChild(insRow);
+
+  if(insertAfterEl && insertAfterEl.nextSibling){
+    list.insertBefore(wrap, insertAfterEl.nextSibling);
+  } else {
+    list.appendChild(wrap);
+  }
 }
 
-// PDF
-document.getElementById('genbtn').addEventListener('click', function() {
-  if (!jsPDFLoaded) {
-    alert('Cargando herramienta de PDF, espera un momento e inténtalo de nuevo.');
-    return;
-  }
+// ── PDF ──
+document.getElementById('genbtn').addEventListener('click', function(){
+  if(!jsPDFLoaded){ alert('Espera un momento y vuelve a intentarlo.'); return; }
   generatePDF();
 });
 
-function generatePDF() {
+function generatePDF(){
   var doc = new window.jspdf.jsPDF({orientation:'portrait',unit:'mm',format:'a4'});
-  var W=210, M=14, TW=W-M*2, y=M;
-
-  var CDARK=[26,26,46], CMID=[46,64,87], CACC=[232,255,71];
-  var CW=[255,255,255], CRA=[240,244,248], CRB=[255,255,255];
-  var CB=[200,200,200], CT=[30,30,50], CG=[100,100,100];
-
-  var grupo = document.getElementById('mg').value;
-  var semana= document.getElementById('ms').value;
-  var atlets= document.getElementById('ma').value;
-  var bloque= document.getElementById('mb').value;
-  var objSem= document.getElementById('mo').value;
-
+  var W=210,M=14,TW=W-M*2,y=M;
+  var CDARK=[26,26,46],CMID=[46,64,87],CACC=[232,255,71];
+  var CW=[255,255,255],CRA=[240,244,248],CRB=[255,255,255];
+  var CB=[200,200,200],CT=[30,30,50],CG=[100,100,100];
   var cW=[TW*0.35,TW*0.12,TW*0.10,TW*0.09,TW*0.34];
 
-  function chk(h) { if(y+h>283){doc.addPage();y=M;} }
+  function chk(h){ if(y+h>283){doc.addPage();y=M;} }
   function rgb(c){doc.setTextColor(c[0],c[1],c[2]);}
   function fill(c){doc.setFillColor(c[0],c[1],c[2]);}
   function draw(c){doc.setDrawColor(c[0],c[1],c[2]);}
 
-  // Title
-  fill(CDARK); doc.rect(M,y,TW,10,'F');
-  doc.setFont('helvetica','bold');doc.setFontSize(11);rgb(CW);
-  doc.text((grupo+' — '+semana).toUpperCase(),M+4,y+7);
-  y+=10;
+  var grupo=document.getElementById('mg').value;
+  var semana=document.getElementById('ms').value;
+  var atlets=document.getElementById('ma').value;
+  var bloque=document.getElementById('mb').value;
+  var objSem=document.getElementById('mo').value;
 
-  fill(CMID); doc.rect(M,y,TW,7,'F');
+  // Header
+  fill(CDARK);doc.rect(M,y,TW,10,'F');
+  doc.setFont('helvetica','bold');doc.setFontSize(11);rgb(CW);
+  doc.text((grupo+' — '+semana).toUpperCase(),M+4,y+7);y+=10;
+
+  fill(CMID);doc.rect(M,y,TW,7,'F');
   doc.setFont('helvetica','italic');doc.setFontSize(8);rgb(CW);
-  doc.text((atlets?atlets+'  |  '+bloque:bloque),M+4,y+5);
-  y+=7;
+  doc.text((atlets?atlets+'  |  '+bloque:bloque),M+4,y+5);y+=7;
 
   if(objSem){
     doc.setFont('helvetica','italic');doc.setFontSize(8);rgb(CG);
     var ls=doc.splitTextToSize(objSem,TW-6);
-    chk(ls.length*4+4);
-    doc.text(ls,M+3,y+4);y+=ls.length*4+4;
+    chk(ls.length*4+4);doc.text(ls,M+3,y+4);y+=ls.length*4+4;
   }
   y+=4;
 
@@ -303,16 +324,21 @@ function generatePDF() {
     y+=6;
 
     var alt=0;
+    // Iterate all children — blocks (wrapped) and exercises
     var children=list.children;
     for(var i=0;i<children.length;i++){
       var item=children[i];
-      if(item.classList.contains('bi')){
-        var val=item.querySelector('input').value.trim();
+
+      // Block wrapper
+      if(item.querySelector && item.querySelector('.bi')){
+        var val=item.querySelector('.bi input').value.trim();
         if(!val)continue;
         chk(6);fill(CMID);doc.rect(M,y,TW,6,'F');
         doc.setFont('helvetica','bold');doc.setFontSize(8.5);rgb(CW);
         doc.text(val,M+2,y+4.2);y+=6;
-      } else if(item.classList.contains('ei')){
+      }
+      // Exercise
+      else if(item.classList && item.classList.contains('ei')){
         var inps=item.querySelectorAll('input');
         var sel=item.querySelector('select');
         var ex=inps[0]?inps[0].value.trim():'';
@@ -321,13 +347,16 @@ function generatePDF() {
         var cal=sel?sel.value:'Z';
         var obs=inps[3]?inps[3].value.trim():'';
         if(!ex&&!ser&&!obs)continue;
+
         var exL=doc.splitTextToSize(ex||'',cW[0]-4);
         var obL=doc.splitTextToSize(obs||'',cW[4]-4);
         var rH=Math.max(exL.length,obL.length)*4+4;
         chk(rH);
+
         fill(alt%2===0?CRA:CRB);doc.rect(M,y,TW,rH,'F');
         draw(CB);var bx=M;
         cW.forEach(function(cw){doc.rect(bx,y,cw,rH);bx+=cw;});
+
         doc.setFont('helvetica','normal');doc.setFontSize(8);rgb(CT);
         if(exL.length)doc.text(exL,M+2,y+3.5);
         doc.text(ser,M+cW[0]+cW[1]/2,y+3.5,{align:'center'});
