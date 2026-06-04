@@ -307,6 +307,14 @@ pre.export-text{background:#F6F8FA;border-radius:var(--radius-sm);padding:14px;f
   /* SEARCH */
   #kidSearchInput{font-size:.8rem}
 
+  /* STEPS — force horizontal scroll */
+  .steps{overflow-x:auto;flex-wrap:nowrap !important;padding-bottom:6px}
+  .step-btn{flex-shrink:0;white-space:nowrap}
+
+  /* LINKS BAR — stack each link on its own line */
+  #panel4 > div:first-child > div:last-child{flex-direction:column}
+  #panel4 > div:first-child > div:last-child > div{min-width:0 !important;width:100%}
+
   /* LINKS BAR */
   .comedor-wrap{padding:0}
 
@@ -346,8 +354,8 @@ pre.export-text{background:#F6F8FA;border-radius:var(--radius-sm);padding:14px;f
     <button class="btn btn-outline btn-sm" onclick="document.getElementById('savedGroupsBanner').style.display='none'">Ignorar</button>
   </div>
 
-  <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin-bottom:20px">
-    <div class="steps" style="flex:1">
+  <div style="display:flex;align-items:center;gap:10px;flex-wrap:nowrap;margin-bottom:20px;overflow:hidden">
+    <div class="steps" style="flex:1;min-width:0">
       <button class="step-btn active" onclick="goStep(1)" id="step1btn"><div class="step-num">1</div>Datos</button>
       <button class="step-btn" onclick="goStep(2)" id="step2btn"><div class="step-num">2</div>Columnas</button>
       <button class="step-btn" onclick="goStep(3)" id="step3btn"><div class="step-num">3</div>Ajustes</button>
@@ -494,15 +502,15 @@ pre.export-text{background:#F6F8FA;border-radius:var(--radius-sm);padding:14px;f
   <!-- PASO 4: GRUPOS + EDICIÓN -->
   <div class="panel" id="panel4">
     <!-- ENLACES PARA COMPARTIR -->
-    <div style="background:#0A0E14;border-radius:var(--radius);padding:16px 20px;margin-bottom:16px;display:flex;flex-wrap:wrap;gap:16px;align-items:center">
+    <div style="background:#0A0E14;border-radius:var(--radius);padding:14px 16px;margin-bottom:16px;display:flex;flex-wrap:wrap;gap:12px;align-items:center;overflow:hidden">
       <div style="font-family:'Syne',sans-serif;font-weight:700;font-size:.85rem;color:#FFB800;white-space:nowrap">🔗 Enlaces para compartir:</div>
       <div style="display:flex;flex-wrap:wrap;gap:8px;flex:1">
-        <div style="display:flex;align-items:center;gap:6px;background:rgba(255,255,255,.06);border-radius:8px;padding:7px 12px;flex:1;min-width:200px">
+        <div style="display:flex;align-items:center;gap:6px;background:rgba(255,255,255,.06);border-radius:8px;padding:7px 10px;flex:1;min-width:0;overflow:hidden">
           <span style="font-size:.72rem;color:#aaa;white-space:nowrap">👨‍👩‍👧 Padres:</span>
           <span style="font-family:'DM Mono',monospace;font-size:.72rem;color:#fff;flex:1;overflow:hidden;text-overflow:ellipsis" id="link-padres">cargando...</span>
           <button onclick="copyLink('link-padres')" style="background:none;border:1px solid #555;color:#aaa;border-radius:5px;padding:3px 8px;cursor:pointer;font-size:.7rem;white-space:nowrap;font-family:'Instrument Sans',sans-serif" title="Copiar">📋</button>
         </div>
-        <div style="display:flex;align-items:center;gap:6px;background:rgba(255,255,255,.06);border-radius:8px;padding:7px 12px;flex:1;min-width:200px">
+        <div style="display:flex;align-items:center;gap:6px;background:rgba(255,255,255,.06);border-radius:8px;padding:7px 10px;flex:1;min-width:0;overflow:hidden">
           <span style="font-size:.72rem;color:#aaa;white-space:nowrap">🏃 Monitores:</span>
           <span style="font-family:'DM Mono',monospace;font-size:.72rem;color:#fff;flex:1;overflow:hidden;text-overflow:ellipsis" id="link-monitor">cargando...</span>
           <button onclick="copyLink('link-monitor')" style="background:none;border:1px solid #555;color:#aaa;border-radius:5px;padding:3px 8px;cursor:pointer;font-size:.7rem;white-space:nowrap;font-family:'Instrument Sans',sans-serif" title="Copiar">📋</button>
