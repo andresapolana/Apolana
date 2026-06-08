@@ -1331,8 +1331,8 @@ function renderResults(){
   </div>`).join('')}`;
   area.innerHTML=html;
   setupDragDrop();
-  setupDragDrop();
   setTimeout(checkUnassignedKids, 100);
+}
 
 function renderGruposGrid(turno){
   return grupos[turno].map((grupo,gi)=>{
