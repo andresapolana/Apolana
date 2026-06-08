@@ -217,6 +217,12 @@ pre.export-text{background:#F6F8FA;border-radius:var(--radius-sm);padding:14px;f
 .no-data{text-align:center;padding:60px 20px;color:#C5CDD6}
 .no-data .ico{font-size:2.8rem;margin-bottom:12px}
 
+/* DESKTOP: action buttons as flex row */
+@media(min-width:641px){
+  #actionBtns{display:flex !important;flex-wrap:wrap}
+  #actionBtns .btn{font-size:.85rem;padding:8px 14px}
+}
+
 /* MOBILE BOTTOM NAV */
 .mobile-nav {
   display: none;
@@ -244,6 +250,10 @@ pre.export-text{background:#F6F8FA;border-radius:var(--radius-sm);padding:14px;f
   transition: color .2s;
 }
 .mobile-nav-btn.active { color: #FFB800; }
+@keyframes pulse {
+  0%,100% { opacity:1; transform:scale(1); }
+  50% { opacity:.8; transform:scale(1.03); }
+}
 .mobile-nav-btn span:first-child { font-size: 1.2rem; }
 
 @media(max-width:640px){
@@ -271,11 +281,11 @@ pre.export-text{background:#F6F8FA;border-radius:var(--radius-sm);padding:14px;f
   .step-num{width:16px;height:16px;font-size:.58rem}
 
   /* STATS — all in one scrollable row */
-  .stats-bar{display:flex;flex-wrap:nowrap;overflow-x:auto;gap:8px;scrollbar-width:none;-webkit-overflow-scrolling:touch;padding-bottom:4px}
-  .stats-bar::-webkit-scrollbar{display:none}
-  .stat{min-width:80px;flex-shrink:0;padding:10px 10px;text-align:center}
-  .stat-num{font-size:1.4rem}
-  .stat-label{font-size:.58rem}
+  /* STATS — 3-col grid, all visible */
+  .stats-bar{display:grid !important;grid-template-columns:repeat(3,1fr);gap:8px;overflow:visible !important}
+  .stat{min-width:0;padding:10px 8px;text-align:center;flex-shrink:unset}
+  .stat-num{font-size:1.3rem}
+  .stat-label{font-size:.56rem}
 
   /* BUTTONS — wrap nicely */
   .btn{padding:8px 11px;font-size:.78rem}
@@ -307,13 +317,25 @@ pre.export-text{background:#F6F8FA;border-radius:var(--radius-sm);padding:14px;f
   /* SEARCH */
   #kidSearchInput{font-size:.8rem}
 
-  /* STEPS — force horizontal scroll */
-  .steps{overflow-x:auto;flex-wrap:nowrap !important;padding-bottom:6px}
-  .step-btn{flex-shrink:0;white-space:nowrap}
+  /* STEPS — 2x2 grid on mobile, all visible */
+  #stepsSearchWrap{flex-direction:column !important;gap:8px}
+  .steps{display:grid !important;grid-template-columns:1fr 1fr;gap:6px;overflow:visible !important;padding:0}
+  .step-btn{white-space:nowrap;padding:8px 10px;font-size:.78rem;justify-content:center;text-align:center;border-radius:10px}
+  .step-btn .step-num{width:16px;height:16px;font-size:.6rem}
 
-  /* LINKS BAR — stack each link on its own line */
-  #panel4 > div:first-child > div:last-child{flex-direction:column}
-  #panel4 > div:first-child > div:last-child > div{min-width:0 !important;width:100%}
+  /* SEARCH full width below steps */
+  #stepsSearchWrap > div:last-child{width:100%;max-width:100% !important;min-width:0 !important;flex:none}
+
+  /* WEEK TABS — 2x3 grid on mobile */
+  .turno-tabs{display:grid !important;grid-template-columns:1fr 1fr;gap:6px;overflow:visible !important;padding:0}
+  .ttab{white-space:normal !important;text-align:center;padding:8px 6px;font-size:.72rem;flex-shrink:unset}
+
+  /* LINKS BAR — stack each link on its own line, hide copy button text */
+  #panel4 > div:first-child > div:last-child{flex-direction:column;gap:6px}
+  #panel4 > div:first-child > div:last-child > div{min-width:0 !important;width:100%;box-sizing:border-box}
+
+  /* ACTION BUTTONS — keep 2-col grid, smaller text */
+  #actionBtns .btn{font-size:.74rem;padding:7px 8px}
 
   /* LINKS BAR */
   .comedor-wrap{padding:0}
@@ -333,6 +355,9 @@ pre.export-text{background:#F6F8FA;border-radius:var(--radius-sm);padding:14px;f
     <button class="htab" onclick="showView('monitor')">🏃 Monitor</button>
     <button class="htab" onclick="showView('comedor')">🍽️ Comedor</button>
     <button class="htab" onclick="showView('monitores')">👥 Monitores</button>
+    <button class="htab" onclick="showView('stats')">📊 Stats</button>
+    <button class="htab" onclick="showView('histasist')">📅 Historial</button>
+    <button class="htab" onclick="showView('incidencias')">📬 Incidencias</button>
     <button class="htab" onclick="showView('qr')">📲 QR</button>
     <button class="htab" onclick="showView('changelog')">📋 Cambios</button>
 
@@ -354,7 +379,7 @@ pre.export-text{background:#F6F8FA;border-radius:var(--radius-sm);padding:14px;f
     <button class="btn btn-outline btn-sm" onclick="document.getElementById('savedGroupsBanner').style.display='none'">Ignorar</button>
   </div>
 
-  <div style="display:flex;align-items:center;gap:10px;flex-wrap:nowrap;margin-bottom:20px;overflow:hidden">
+  <div id="stepsSearchWrap" style="display:flex;align-items:center;gap:10px;flex-wrap:nowrap;margin-bottom:20px;overflow:hidden">
     <div class="steps" style="flex:1;min-width:0">
       <button class="step-btn active" onclick="goStep(1)" id="step1btn"><div class="step-num">1</div>Datos</button>
       <button class="step-btn" onclick="goStep(2)" id="step2btn"><div class="step-num">2</div>Columnas</button>
@@ -502,20 +527,37 @@ pre.export-text{background:#F6F8FA;border-radius:var(--radius-sm);padding:14px;f
   <!-- PASO 4: GRUPOS + EDICIÓN -->
   <div class="panel" id="panel4">
     <!-- ENLACES PARA COMPARTIR -->
-    <div style="background:#0A0E14;border-radius:var(--radius);padding:14px 16px;margin-bottom:16px;display:flex;flex-wrap:wrap;gap:12px;align-items:center;overflow:hidden">
-      <div style="font-family:'Syne',sans-serif;font-weight:700;font-size:.85rem;color:#FFB800;white-space:nowrap">🔗 Enlaces para compartir:</div>
-      <div style="display:flex;flex-wrap:wrap;gap:8px;flex:1">
-        <div style="display:flex;align-items:center;gap:6px;background:rgba(255,255,255,.06);border-radius:8px;padding:7px 10px;flex:1;min-width:0;overflow:hidden">
-          <span style="font-size:.72rem;color:#aaa;white-space:nowrap">👨‍👩‍👧 Padres:</span>
-          <span style="font-family:'DM Mono',monospace;font-size:.72rem;color:#fff;flex:1;overflow:hidden;text-overflow:ellipsis" id="link-padres">cargando...</span>
-          <button onclick="copyLink('link-padres')" style="background:none;border:1px solid #555;color:#aaa;border-radius:5px;padding:3px 8px;cursor:pointer;font-size:.7rem;white-space:nowrap;font-family:'Instrument Sans',sans-serif" title="Copiar">📋</button>
+    <div style="background:#0A0E14;border-radius:var(--radius);padding:14px 16px;margin-bottom:16px">
+      <div style="font-family:'Syne',sans-serif;font-weight:700;font-size:.85rem;color:#FFB800;margin-bottom:10px">🔗 Enlaces para compartir</div>
+      <div style="display:flex;flex-direction:column;gap:8px">
+        <div style="background:rgba(255,255,255,.06);border-radius:8px;padding:9px 12px">
+          <div style="font-size:.7rem;color:#aaa;margin-bottom:4px">👨‍👩‍👧 Padres</div>
+          <div style="display:flex;align-items:center;gap:8px">
+            <span style="font-size:.72rem;color:#fff;flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap" id="link-padres">cargando...</span>
+            <button onclick="copyLink('link-padres')" style="background:#FFB800;border:none;color:#000;border-radius:6px;padding:5px 12px;cursor:pointer;font-size:.72rem;font-weight:700;white-space:nowrap;flex-shrink:0">📋 Copiar</button>
+          </div>
         </div>
-        <div style="display:flex;align-items:center;gap:6px;background:rgba(255,255,255,.06);border-radius:8px;padding:7px 10px;flex:1;min-width:0;overflow:hidden">
-          <span style="font-size:.72rem;color:#aaa;white-space:nowrap">🏃 Monitores:</span>
-          <span style="font-family:'DM Mono',monospace;font-size:.72rem;color:#fff;flex:1;overflow:hidden;text-overflow:ellipsis" id="link-monitor">cargando...</span>
-          <button onclick="copyLink('link-monitor')" style="background:none;border:1px solid #555;color:#aaa;border-radius:5px;padding:3px 8px;cursor:pointer;font-size:.7rem;white-space:nowrap;font-family:'Instrument Sans',sans-serif" title="Copiar">📋</button>
+        <div style="background:rgba(255,255,255,.06);border-radius:8px;padding:9px 12px">
+          <div style="font-size:.7rem;color:#aaa;margin-bottom:4px">🏃 Monitores</div>
+          <div style="display:flex;align-items:center;gap:8px">
+            <span style="font-size:.72rem;color:#fff;flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap" id="link-monitor">cargando...</span>
+            <button onclick="copyLink('link-monitor')" style="background:#00C46A;border:none;color:#fff;border-radius:6px;padding:5px 12px;cursor:pointer;font-size:.72rem;font-weight:700;white-space:nowrap;flex-shrink:0">📋 Copiar</button>
+          </div>
         </div>
       </div>
+    </div>
+    <div id="avisoBanner" style="display:none;background:#E8F4FF;border:1px solid #90CAF9;border-radius:10px;padding:10px 16px;margin-bottom:12px;align-items:center;gap:10px;flex-wrap:wrap">
+      <span style="font-size:1rem">📢</span>
+      <span style="font-size:.85rem;color:#0D47A1;flex:1" id="avisoBannerText"></span>
+      <button class="btn btn-outline btn-sm" onclick="editAviso()">✏️ Editar</button>
+      <button class="btn btn-outline btn-sm" onclick="clearAviso()">✕</button>
+    </div>
+    <div id="unassignedBanner" style="display:none;background:#FFF0F0;border:1px solid #FFB3B3;border-radius:10px;padding:10px 16px;margin-bottom:12px;align-items:center;gap:10px;flex-wrap:wrap">
+      <span style="font-size:.85rem;color:#CC0000;flex:1">⚠️ <strong><span id="unassignedCount">0</span> niños sin asignar a ningún grupo:</strong> <span id="unassignedNames" style="font-weight:400"></span></span>
+    </div>
+    <div id="saveReminder" style="display:none;background:#FFF3CD;border:1px solid #FFB800;border-radius:10px;padding:10px 16px;margin-bottom:12px;align-items:center;gap:10px;flex-wrap:wrap">
+      <span style="font-size:.85rem;color:#7A5C00;flex:1">⚠️ Tienes cambios sin guardar en Firebase</span>
+      <button class="btn btn-success btn-sm" onclick="saveGruposManual()">🔥 Guardar ahora</button>
     </div>
     <div id="resultsArea">
       <div class="no-data">
@@ -559,6 +601,7 @@ pre.export-text{background:#F6F8FA;border-radius:var(--radius-sm);padding:14px;f
         <button onclick="changeDay(1)">▶</button>
       </div>
       <div id="weekJumps" style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:14px"></div>
+      <div id="monAviso" style="display:none;background:#E8F4FF;border:1px solid #90CAF9;border-radius:10px;padding:10px 14px;margin-bottom:12px;font-size:.83rem;color:#0D47A1;font-weight:500"></div>
       <div id="monHorarioHoy" style="display:none"></div>
       <div class="attend-summary">
         <div class="attend-pill pill-p">✅ <span id="countPresent">0</span> presentes</div>
@@ -878,10 +921,13 @@ function showViewMobile(v, btn) {
   document.querySelectorAll('.htab').forEach(function(el){ el.classList.remove('active'); });
   var viewEl = document.getElementById('view-'+v);
   if(viewEl) viewEl.classList.add('active');
-  var badges={admin:'ADMIN · badge-admin',monitor:'MONITOR · badge-monitor',comedor:'COMEDOR · badge-comedor',monitores:'MONITORES · badge-admin',qr:'QR · badge-admin',changelog:'CAMBIOS · badge-admin'};
+  var badges={admin:'ADMIN · badge-admin',monitor:'MONITOR · badge-monitor',comedor:'COMEDOR · badge-comedor',monitores:'MONITORES · badge-admin',qr:'QR · badge-admin',changelog:'CAMBIOS · badge-admin',stats:'STATS · badge-admin'};
   var parts=(badges[v]||'ADMIN · badge-admin').split(' · ');
   if(v==='monitores') { loadMonitoresData(); setTimeout(renderMonitoresList,300); }
   if(v==='qr') { setTimeout(renderQRCodes, 100); }
+  if(v==='stats') { setTimeout(renderStats, 100); }
+  if(v==='histasist') { setTimeout(renderHistorialAsist, 100); }
+  if(v==='incidencias') { setTimeout(loadIncidencias, 100); }
   if(v==='changelog') { loadChangelog(); }
   var b=document.getElementById('modeBadge');
   if(b) { b.textContent=parts[0]; b.className='header-badge '+parts[1]; }
@@ -896,6 +942,9 @@ function showView(v){
   const [txt,cls]=(badges[v]||'ADMIN · badge-admin').split(' · ');
   if(v==='monitores') { loadMonitoresData(); setTimeout(renderMonitoresList,300); }
   if(v==='qr') { setTimeout(renderQRCodes, 100); }
+  if(v==='stats') { setTimeout(renderStats, 100); }
+  if(v==='histasist') { setTimeout(renderHistorialAsist, 100); }
+  if(v==='incidencias') { setTimeout(loadIncidencias, 100); }
   if(v==='changelog') { loadChangelog(); }
   const b=document.getElementById('modeBadge');
   b.textContent=txt; b.className='header-badge '+cls;
@@ -982,6 +1031,8 @@ function buildMapper(){
     {key:'matinera',  label:'🌅 Servicio de Matinera',      hints:['matinera','matin']},
     {key:'comedor',   label:'🍽️ Comedor (Sí/No)',           hints:['comedor','almuerzo','lunch']},
     {key:'alergias',  label:'⚠️ Alergias',                  hints:['alergia','dieta','intoler','allerg']},
+    {key:'sexo',         label:'⚧ Sexo / Género',             hints:['sexo','género','genero','sex','gender']},
+    {key:'talla',        label:'👕 Talla camiseta',           hints:['talla','camiseta','shirt','size','tallaje']},
     {key:'observaciones',label:'💬 Observaciones',          hints:['observa','comentar','amigo','nota']},
   ];
 
@@ -1064,6 +1115,8 @@ function generateGroups(){
     id:String(idx),
     nombre:row[mapping.nombre]||'(sin nombre)',
     apellidos:mapping.apellidos?row[mapping.apellidos]:'',
+    sexo:mapping.sexo?String(row[mapping.sexo]||'').trim():'',
+    talla:mapping.talla?String(row[mapping.talla]||'').trim():'',
     edad:extractAge(row[mapping.edad])||extractAge(row[mapping.fechaNac]),
     anoNac:extractYear(row[mapping.fechaNac])||extractYear(row[mapping.edad]),
     semanas:['s1','s2','s3','s4','s5'].filter(s=>mapping[s]&&isComedor(row[mapping[s]])),
@@ -1245,18 +1298,20 @@ function renderResults(){
     <div class="stat"><div class="stat-num">${comedorCount}</div><div class="stat-label">Comedor</div></div>
   </div>
   <div class="alert alert-info">✅ Grupos generados con nombres de color. <strong>Códigos de monitor</strong> en cada tarjeta. Activa "Editar grupos" para mover niños manualmente.</div>
-  <div style="display:flex;gap:8px;margin-bottom:16px;flex-wrap:wrap">
+  <div id="actionBtns" style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:16px">
     <button class="btn btn-outline" onclick="goStep(3)">← Volver</button>
     <button class="btn btn-primary" id="editToggleBtn" onclick="toggleEdit()">✏️ Editar grupos</button>
-    <button class="btn btn-success" onclick="exportResults()">📋 Copiar para Sheets</button>
-    <button class="btn btn-warn" onclick="exportWeeklyLists()">📥 Listas por semana (.xlsx)</button>
-    <button class="btn btn-outline" onclick="exportCSV()">⬇️ Descargar TSV</button>
-    <button class="btn btn-outline" onclick="exportCodes()">🔑 Ver códigos</button>
-    <button class="btn btn-outline" onclick="showAttendanceHistory()">📅 Ver asistencia</button>
-    <button class="btn btn-outline" onclick="showGlobalAttendance()">🌐 Asistencia global</button>
-    <button class="btn btn-outline btn-sm" onclick="backupGrupos('backup-campus')" title="Descargar backup de todos los grupos">💾 Backup</button>
-    <button class="btn btn-success btn-sm" onclick="saveGruposManual()" id="saveFirebaseBtn" title="Guardar grupos en Firebase ahora">🔥 Guardar en Firebase</button>
-    <button class="btn btn-danger btn-sm" onclick="resetGroups()" style="margin-left:auto" title="Reiniciar todos los grupos">🗑️ Reiniciar</button>
+    <button class="btn btn-success" onclick="exportResults()">📋 Copiar Sheets</button>
+    <button class="btn btn-warn" onclick="exportWeeklyLists()">📥 Listas .xlsx</button>
+    <button class="btn btn-outline" onclick="exportCSV()">⬇️ TSV</button>
+    <button class="btn btn-outline" onclick="exportCodes()">🔑 Códigos</button>
+    <button class="btn btn-outline" onclick="showAttendanceHistory()">📅 Asistencia</button>
+    <button class="btn btn-outline" onclick="showGlobalAttendance()">🌐 Global</button>
+    <button class="btn btn-outline" onclick="editAviso()">📢 Aviso del día</button>
+    <button class="btn btn-outline" onclick="exportGroupsPDF()">📄 PDF grupos</button>
+    <button class="btn btn-outline" onclick="backupGrupos('backup-campus')">💾 Backup</button>
+    <button class="btn btn-success" onclick="saveGruposManual()" id="saveFirebaseBtn">🔥 Firebase</button>
+    <button class="btn btn-danger" onclick="resetGroups()" style="grid-column:1/-1">🗑️ Reiniciar</button>
   </div>
   <div id="editToolbar" class="edit-toolbar" style="display:none">
     <p>✏️ <strong>Modo edición activo</strong> — Arrastra los niños entre grupos para reorganizarlos. Los cambios se guardan automáticamente.</p>
@@ -1276,7 +1331,8 @@ function renderResults(){
   </div>`).join('')}`;
   area.innerHTML=html;
   setupDragDrop();
-}
+  setupDragDrop();
+  setTimeout(checkUnassignedKids, 100);
 
 function renderGruposGrid(turno){
   return grupos[turno].map((grupo,gi)=>{
@@ -1384,7 +1440,9 @@ function moveKid(kidId,fromTurno,fromGi,toTurno,toGi){
   if(fromT!==toT) refreshGrid(toT);
   setupDragDrop();
   showToast('↔️ Niño movido y guardado ✅','success');
-  logChange('move', (kid.nombre||kid.nombre||'Niño') + ' movido de ' + fromName + ' → ' + toName + ' (' + fromT + ')');
+  logChange('move', (kid.nombre||'Niño') + ' movido de ' + fromName + ' → ' + toName + ' (' + fromT + ')');
+  window._unsavedChanges = true;
+  updateSaveReminder();
 }
 
 function refreshGrid(turno){
@@ -1576,6 +1634,15 @@ function enterPin(){
   logAccessEntry(pin, 'monitor');
   document.getElementById('pinScreen').style.display='none';
   document.getElementById('attendScreen').style.display='block';
+  // Show aviso if any
+  if(window._fbDB) {
+    window._fbDB.collection('campus').doc('aviso').get().then(function(snap) {
+      if(snap.exists && snap.data().texto) {
+        var aEl = document.getElementById('monAviso');
+        if(aEl) { aEl.textContent = '📢 ' + snap.data().texto; aEl.style.display='block'; }
+      }
+    }).catch(function(){});
+  }
   const ages=monitorGroup.kids.map(k=>k.edad).filter(Boolean);
   document.getElementById('monGrupoTitle').textContent=(monitorGroup.monitorNombre||'Monitor')+' · '+monitorGroup.turno;
   document.getElementById('monGrupoSub').textContent=monitorGroup.kids.length+' niños · '+(ages.length?Math.min(...ages)+'-'+Math.max(...ages)+' años':'?')+' · '+getGroupName(monitorGroup.groupIdx);
@@ -1656,6 +1723,7 @@ async function renderAttendList(){
           ${info?`<span class="attend-age">${info}</span>`:''}
           ${kid.comedor?'<span class="tag tag-comedor" style="font-size:.65rem">🍽️ Comedor</span>':''}
           ${kid.alergias?`<span class="attend-alergia">⚠️ ${kid.alergias}</span>`:''}
+          ${kid.talla?`<span class="tag" style="background:#EEF2FF;color:#3730A3;border:1px solid #C7D2FE;border-radius:5px;padding:1px 6px;font-size:.65rem">👕 ${kid.talla}</span>`:''}
           ${kid.otros?`<span class="attend-alergia" style="background:#F3EFF8;color:#6B3FA0;border-color:#D8C8F0">📝 ${kid.otros}</span>`:''}
         </div>
       </div>
@@ -2024,6 +2092,7 @@ function _showGrupos() {
   renderResults();
   var t = Object.values(grupos).reduce(function(a,gs){ return a+gs.reduce(function(b,gr){ return b+gr.length; },0); },0);
   showToast('✅ ' + t + ' niños cargados', 'success', 2000);
+    loadAviso();
     logChange('generate', 'Grupos cargados desde Firebase — ' + t + ' niños en ' + Object.keys(grupos).length + ' semanas');
 }
 
@@ -2058,6 +2127,8 @@ function saveGruposManual() {
     updated: new Date()
   }).then(function() {
     showToast('🔥 Grupos guardados en Firebase ✅','success');
+    window._unsavedChanges = false;
+    updateSaveReminder();
     if(btn) { btn.disabled=false; btn.textContent='🔥 Guardar en Firebase'; }
     logChange('save', 'Grupos guardados manualmente en Firebase — ' + Object.values(grupos).reduce(function(a,g){return a+g.reduce(function(b,gr){return b+gr.length;},0);},0) + ' niños');
   }).catch(function(e) {
@@ -2277,6 +2348,174 @@ function backupGrupos(filename) {
   a.click();
   URL.revokeObjectURL(url);
   showToast('💾 Backup descargado','success',2000);
+}
+
+// ══════════════════════════════════════════════
+// INCIDENCIAS DE PADRES
+// ══════════════════════════════════════════════
+function loadIncidencias() {
+  var el = document.getElementById('incidencias-list');
+  if(!el) return;
+  if(!window._fbDB) { el.innerHTML = '<p style="color:red">Firebase no conectado.</p>'; return; }
+  el.innerHTML = '<div style="text-align:center;padding:20px;color:var(--muted)">Cargando...</div>';
+
+  window._fbDB.collection('incidencias').orderBy('fecha','desc').get().then(function(snap) {
+    if(snap.empty) {
+      el.innerHTML = '<div style="text-align:center;padding:40px;color:var(--muted)">No hay incidencias todavía.</div>';
+      return;
+    }
+    el.innerHTML = '';
+    snap.forEach(function(doc) {
+      var d = doc.data();
+      var fecha = d.fecha && d.fecha.toDate ? d.fecha.toDate() : new Date(d.fecha);
+      var fechaStr = fecha.toLocaleDateString('es-ES',{day:'2-digit',month:'2-digit',year:'2-digit'}) + ' ' +
+                     fecha.toLocaleTimeString('es-ES',{hour:'2-digit',minute:'2-digit'});
+      var card = document.createElement('div');
+      card.style.cssText = 'background:'+(d.leida?'#f8f9fa':'#fff')+';border:1px solid '+(d.leida?'#e0e0e0':'#90CAF9')+';border-radius:12px;padding:14px 16px;margin-bottom:10px';
+
+      var header = document.createElement('div');
+      header.style.cssText = 'display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;flex-wrap:wrap;gap:6px';
+      header.innerHTML = '<div style="font-weight:700;font-size:.88rem">'+d.nombre+' · <span style="color:var(--sky)">'+d.nino+'</span></div>'+
+        '<div style="font-size:.72rem;color:#aaa">'+fechaStr+'</div>';
+      card.appendChild(header);
+
+      var msg = document.createElement('div');
+      msg.style.cssText = 'font-size:.84rem;color:#333;line-height:1.5;margin-bottom:10px';
+      msg.textContent = d.texto;
+      card.appendChild(msg);
+
+      var actions = document.createElement('div');
+      actions.style.cssText = 'display:flex;gap:8px';
+      var btnLeer = document.createElement('button');
+      btnLeer.className = 'btn btn-outline btn-sm';
+      btnLeer.textContent = d.leida ? '✅ Leída' : '👁️ Marcar como leída';
+      btnLeer.style.opacity = d.leida ? '0.5' : '1';
+      btnLeer.addEventListener('click', (function(id, card, btn, data){
+        return function() {
+          window._fbDB.collection('incidencias').doc(id).update({leida: true}).then(function() {
+            card.style.background = '#f8f9fa';
+            card.style.borderColor = '#e0e0e0';
+            btn.textContent = '✅ Leída';
+            btn.style.opacity = '0.5';
+          });
+        };
+      })(doc.id, card, btnLeer, d));
+      actions.appendChild(btnLeer);
+
+      var btnDel = document.createElement('button');
+      btnDel.className = 'btn btn-danger btn-sm';
+      btnDel.textContent = '🗑️';
+      btnDel.addEventListener('click', (function(id, card){
+        return function() {
+          if(!confirm('¿Eliminar esta incidencia?')) return;
+          window._fbDB.collection('incidencias').doc(id).delete().then(function() {
+            card.remove();
+          });
+        };
+      })(doc.id, card));
+      actions.appendChild(btnDel);
+      card.appendChild(actions);
+      el.appendChild(card);
+    });
+  }).catch(function(e) {
+    el.innerHTML = '<p style="color:red">Error: '+e.message+'</p>';
+  });
+}
+
+// ══════════════════════════════════════════════
+// EXPORTAR PDF POR GRUPO
+// ══════════════════════════════════════════════
+function exportGroupsPDF() {
+  var semana = document.querySelector('.ttab.active');
+  var semanaName = semana ? semana.textContent.split('\n')[0].trim() : Object.keys(grupos)[0];
+  if(!semanaName || !grupos[semanaName]) {
+    showToast('⚠️ Selecciona una semana primero','error'); return;
+  }
+  if(typeof window.jspdf === 'undefined' && typeof jspdf === 'undefined') {
+    showToast('⏳ Cargando librería PDF...','success');
+    setTimeout(exportGroupsPDF, 1000); return;
+  }
+  var jsPDF = (window.jspdf && window.jspdf.jsPDF) || jspdf.jsPDF;
+  var doc = new jsPDF({orientation:'portrait', unit:'mm', format:'a4'});
+  var pageW = 210, pageH = 297, margin = 14;
+  var y = margin;
+  var colW = (pageW - margin*2 - 6) / 2;
+
+  // Title
+  doc.setFillColor(10,14,20);
+  doc.rect(0,0,pageW,18,'F');
+  doc.setTextColor(255,184,0);
+  doc.setFontSize(14); doc.setFont('helvetica','bold');
+  doc.text('Campus Apolana — ' + semanaName, margin, 12);
+  doc.setTextColor(180,180,180);
+  doc.setFontSize(8); doc.setFont('helvetica','normal');
+  doc.text('Generado ' + new Date().toLocaleDateString('es-ES'), pageW-margin, 12, {align:'right'});
+  y = 26;
+
+  var grupList = grupos[semanaName];
+  var colorMap = {
+    'rojo':'#E53935','verde':'#43A047','azul':'#1E88E5',
+    'amarillo':'#F9A825','naranja':'#FB8C00','morado':'#8E24AA'
+  };
+
+  function hexToRgb(hex) {
+    var r = parseInt(hex.slice(1,3),16), g = parseInt(hex.slice(3,5),16), b = parseInt(hex.slice(5,7),16);
+    return [r,g,b];
+  }
+
+  grupList.forEach(function(grupo, gi) {
+    var name = getGroupName(gi);
+    var colorKey = name.split(' ')[0].toLowerCase();
+    var colorHex = colorMap[colorKey] || '#333333';
+    var rgb = hexToRgb(colorHex);
+    var cardH = 8 + grupo.length * 5.5 + 6;
+    var col = gi % 2;
+    var xPos = margin + col * (colW + 6);
+
+    if(col === 0 && gi > 0) y += 0; // already advanced
+
+    // Check page break
+    if(y + cardH > pageH - 10) {
+      doc.addPage();
+      y = margin;
+    }
+
+    // Card header
+    doc.setFillColor(rgb[0], rgb[1], rgb[2]);
+    doc.roundedRect(xPos, y, colW, 8, 2, 2, 'F');
+    doc.setTextColor(255,255,255);
+    doc.setFontSize(9); doc.setFont('helvetica','bold');
+    doc.text(name + ' · ' + grupo.length + ' niños', xPos+3, y+5.5);
+
+    // Kids list
+    doc.setTextColor(40,40,40);
+    doc.setFont('helvetica','normal');
+    doc.setFontSize(7.5);
+    var ky = y + 11;
+    grupo.forEach(function(k, ki) {
+      if(ki % 2 === 0) {
+        doc.setFillColor(248,249,250);
+        doc.rect(xPos, ky-3.5, colW, 5, 'F');
+      }
+      var kname = (k.nombre||'') + ' ' + (k.apellidos||'');
+      var info = k.anoNac ? 'n.'+k.anoNac : '';
+      if(k.alergias) info += (info?' · ':'') + '⚠️';
+      doc.setTextColor(40,40,40);
+      doc.text(kname.trim().substring(0,32), xPos+2, ky);
+      if(info) { doc.setTextColor(120,120,120); doc.text(info, xPos+colW-2, ky, {align:'right'}); }
+      ky += 5.5;
+    });
+
+    // Advance y for odd groups (right column done)
+    if(col === 1) {
+      y += cardH + 4;
+    } else if(gi === grupList.length-1) {
+      y += cardH + 4;
+    }
+  });
+
+  doc.save('grupos-' + semanaName.replace(' ','-').toLowerCase() + '.pdf');
+  showToast('📄 PDF generado ✅','success');
 }
 
 // ══════════════════════════════════════════════
@@ -4075,6 +4314,440 @@ function findGroupIdxByName(groupName, semana) {
 }
 
 
+
+// ══════════════════════════════════════════════
+// ESTADÍSTICAS
+// ══════════════════════════════════════════════
+function renderStats() {
+  var el = document.getElementById('statsContent');
+  if(!el) return;
+
+  var semanas = Object.keys(grupos);
+  if(!semanas.length) {
+    el.innerHTML = '<div style="text-align:center;padding:40px;color:var(--muted)">No hay grupos cargados todavía.</div>';
+    return;
+  }
+
+  // Collect all kids — unique by nombre + apellidos
+  var allKids = [];
+  var kidsBySemana = {};
+  var seenIds = new Set();
+  semanas.forEach(function(s) {
+    kidsBySemana[s] = [];
+    grupos[s].forEach(function(g) {
+      g.forEach(function(k) {
+        kidsBySemana[s].push(k);
+        var uid = (k.nombre||'').trim().toLowerCase() + '___' + (k.apellidos||'').trim().toLowerCase();
+        if(!seenIds.has(uid)) { seenIds.add(uid); allKids.push(k); }
+      });
+    });
+  });
+
+  var total = allKids.length;
+  // Sexo field — stored as k.sexo
+  var chicos = allKids.filter(function(k){
+    var s = (k.sexo||'').toString().trim().toUpperCase();
+    return s==='M'||s==='MASCULINO'||s==='HOMBRE'||s==='H'||s==='CHICO';
+  }).length;
+  var chicas = allKids.filter(function(k){
+    var s = (k.sexo||'').toString().trim().toUpperCase();
+    return s==='F'||s==='FEMENINO'||s==='MUJER'||s==='V'||s==='CHICA';
+  }).length;
+  var conComedor = allKids.filter(function(k){ return k.comedor; }).length;
+  var sinComedor = total - conComedor;
+
+  // Age distribution
+  var byYear = {};
+  allKids.forEach(function(k) {
+    var y = k.nacimiento||k.año||k.año_nac||'';
+    if(y) { byYear[y] = (byYear[y]||0)+1; }
+  });
+  var years = Object.keys(byYear).sort();
+
+  // Per semana stats
+  var semanaStats = semanas.map(function(s) {
+    var kids = kidsBySemana[s];
+    var nGrupos = grupos[s].length;
+    var com = kids.filter(function(k){ return k.comedor; }).length;
+    var avgSize = nGrupos ? Math.round(kids.length/nGrupos*10)/10 : 0;
+    return {semana:s, kids:kids.length, grupos:nGrupos, comedor:com, avgSize:avgSize};
+  });
+
+  // Build HTML using DOM
+  el.innerHTML = '';
+
+  function card(title, content) {
+    var d = document.createElement('div');
+    d.style.cssText = 'background:#f8f9fa;border-radius:12px;padding:16px 18px;margin-bottom:14px';
+    d.innerHTML = '<div style="font-weight:700;font-size:.88rem;color:#555;margin-bottom:12px">'+title+'</div>'+content;
+    return d;
+  }
+  function statRow(label, value, color) {
+    return '<div style="display:flex;justify-content:space-between;align-items:center;padding:6px 0;border-bottom:1px solid #eee;font-size:.84rem">'+
+      '<span style="color:#666">'+label+'</span>'+
+      '<span style="font-weight:700;color:'+(color||'var(--dark)')+'">'+value+'</span>'+
+    '</div>';
+  }
+  function pct(n, total) { return total ? ' ('+Math.round(n/total*100)+'%)' : ''; }
+
+  // GLOBAL
+  var globalHtml =
+    statRow('Total niños únicos', total, 'var(--sky)') +
+    statRow('Chicos', chicos + pct(chicos,total)) +
+    statRow('Chicas', chicas + pct(chicas,total)) +
+    (total-chicos-chicas > 0 ? statRow('Sin dato de género', total-chicos-chicas) : '') +
+    statRow('Con comedor', conComedor + pct(conComedor,total), 'var(--grass)') +
+    statRow('Sin comedor', sinComedor + pct(sinComedor,total)) +
+    statRow('Hermanos/as en el campus', hermanos + ' niños de '+familias+' familias', 'var(--sun)');
+  el.appendChild(card('👥 Resumen general', globalHtml));
+
+  // PER SEMANA
+  var semanaHtml = '<div style="overflow-x:auto"><table style="width:100%;border-collapse:collapse;font-size:.82rem;min-width:400px"><thead><tr style="background:var(--dark)">'+
+    '<th style="padding:8px 12px;text-align:left;color:#FFB800">Semana</th>'+
+    '<th style="padding:8px 8px;color:#aaa;text-align:center">Niños</th>'+
+    '<th style="padding:8px 8px;color:#aaa;text-align:center">Grupos</th>'+
+    '<th style="padding:8px 8px;color:#aaa;text-align:center">Comedor</th>'+
+    '<th style="padding:8px 8px;color:#aaa;text-align:center">Media/grupo</th>'+
+    '</tr></thead><tbody>'+
+    semanaStats.map(function(s,i) {
+      return '<tr style="border-bottom:1px solid #F0F2F5;background:'+(i%2?'#f8f9fa':'#fff')+'">'+
+        '<td style="padding:8px 12px;font-weight:600">'+s.semana+'</td>'+
+        '<td style="padding:8px;text-align:center;color:var(--sky);font-weight:700">'+s.kids+'</td>'+
+        '<td style="padding:8px;text-align:center">'+s.grupos+'</td>'+
+        '<td style="padding:8px;text-align:center;color:var(--grass)">'+s.comedor+'</td>'+
+        '<td style="padding:8px;text-align:center">'+s.avgSize+'</td>'+
+      '</tr>';
+    }).join('')+
+    '</tbody></table></div>';
+  el.appendChild(card('📅 Por semana', semanaHtml));
+
+  // AGE DISTRIBUTION
+  if(years.length) {
+    var ageHtml = '<div style="display:flex;flex-wrap:wrap;gap:8px">';
+    years.forEach(function(y) {
+      var n = byYear[y];
+      var pctVal = Math.round(n/total*100);
+      ageHtml += '<div style="flex:1;min-width:100px;background:#fff;border:1px solid var(--border);border-radius:8px;padding:10px;text-align:center">'+
+        '<div style="font-size:1.1rem;font-weight:700;color:var(--sky)">'+n+'</div>'+
+        '<div style="font-size:.72rem;color:#666">n.'+y+'</div>'+
+        '<div style="font-size:.68rem;color:#aaa">'+pctVal+'%</div>'+
+      '</div>';
+    });
+    ageHtml += '</div>';
+    el.appendChild(card('🎂 Por año de nacimiento', ageHtml));
+  }
+
+
+
+  // GROUPS SIZE distribution
+  var groupSizes = {};
+  semanas.forEach(function(s) {
+    grupos[s].forEach(function(g) {
+      var n = g.length;
+      groupSizes[n] = (groupSizes[n]||0)+1;
+    });
+  });
+  var sizes = Object.keys(groupSizes).map(Number).sort(function(a,b){return a-b;});
+  var allGroupsList = [];
+  semanas.forEach(function(s){ grupos[s].forEach(function(g){ allGroupsList.push(g.length); }); });
+  var minSize = Math.min.apply(null,allGroupsList);
+  var maxSize = Math.max.apply(null,allGroupsList);
+  var avgSize = Math.round(allGroupsList.reduce(function(a,b){return a+b;},0)/allGroupsList.length*10)/10;
+  var sizeHtml =
+    statRow('Grupos totales', allGroupsList.length) +
+    statRow('Tamaño mínimo', minSize+' niños') +
+    statRow('Tamaño máximo', maxSize+' niños') +
+    statRow('Tamaño medio', avgSize+' niños');
+  el.appendChild(card('📐 Tamaño de grupos', sizeHtml));
+}
+
+
+// ══════════════════════════════════════════════
+// INCIDENCIAS DE PADRES
+// ══════════════════════════════════════════════
+function loadIncidencias() {
+  var el = document.getElementById('incidencias-list');
+  if(!el) return;
+  if(!window._fbDB) { el.innerHTML = '<p style="color:red">Firebase no conectado.</p>'; return; }
+  el.innerHTML = '<div style="text-align:center;padding:20px;color:var(--muted)">Cargando...</div>';
+
+  window._fbDB.collection('incidencias').orderBy('fecha','desc').get().then(function(snap) {
+    if(snap.empty) {
+      el.innerHTML = '<div style="text-align:center;padding:40px;color:var(--muted)">No hay incidencias todavía.</div>';
+      return;
+    }
+    el.innerHTML = '';
+    snap.forEach(function(doc) {
+      var d = doc.data();
+      var fecha = d.fecha && d.fecha.toDate ? d.fecha.toDate() : new Date(d.fecha);
+      var fechaStr = fecha.toLocaleDateString('es-ES',{day:'2-digit',month:'2-digit',year:'2-digit'}) + ' ' +
+                     fecha.toLocaleTimeString('es-ES',{hour:'2-digit',minute:'2-digit'});
+      var card = document.createElement('div');
+      card.style.cssText = 'background:'+(d.leida?'#f8f9fa':'#fff')+';border:1px solid '+(d.leida?'#e0e0e0':'#90CAF9')+';border-radius:12px;padding:14px 16px;margin-bottom:10px';
+
+      var header = document.createElement('div');
+      header.style.cssText = 'display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;flex-wrap:wrap;gap:6px';
+      header.innerHTML = '<div style="font-weight:700;font-size:.88rem">'+d.nombre+' · <span style="color:var(--sky)">'+d.nino+'</span></div>'+
+        '<div style="font-size:.72rem;color:#aaa">'+fechaStr+'</div>';
+      card.appendChild(header);
+
+      var msg = document.createElement('div');
+      msg.style.cssText = 'font-size:.84rem;color:#333;line-height:1.5;margin-bottom:10px';
+      msg.textContent = d.texto;
+      card.appendChild(msg);
+
+      var actions = document.createElement('div');
+      actions.style.cssText = 'display:flex;gap:8px';
+      var btnLeer = document.createElement('button');
+      btnLeer.className = 'btn btn-outline btn-sm';
+      btnLeer.textContent = d.leida ? '✅ Leída' : '👁️ Marcar como leída';
+      btnLeer.style.opacity = d.leida ? '0.5' : '1';
+      btnLeer.addEventListener('click', (function(id, card, btn, data){
+        return function() {
+          window._fbDB.collection('incidencias').doc(id).update({leida: true}).then(function() {
+            card.style.background = '#f8f9fa';
+            card.style.borderColor = '#e0e0e0';
+            btn.textContent = '✅ Leída';
+            btn.style.opacity = '0.5';
+          });
+        };
+      })(doc.id, card, btnLeer, d));
+      actions.appendChild(btnLeer);
+
+      var btnDel = document.createElement('button');
+      btnDel.className = 'btn btn-danger btn-sm';
+      btnDel.textContent = '🗑️';
+      btnDel.addEventListener('click', (function(id, card){
+        return function() {
+          if(!confirm('¿Eliminar esta incidencia?')) return;
+          window._fbDB.collection('incidencias').doc(id).delete().then(function() {
+            card.remove();
+          });
+        };
+      })(doc.id, card));
+      actions.appendChild(btnDel);
+      card.appendChild(actions);
+      el.appendChild(card);
+    });
+  }).catch(function(e) {
+    el.innerHTML = '<p style="color:red">Error: '+e.message+'</p>';
+  });
+}
+
+// ══════════════════════════════════════════════
+// EXPORTAR PDF POR GRUPO
+// ══════════════════════════════════════════════
+function exportGroupsPDF() {
+  var semana = document.querySelector('.ttab.active');
+  var semanaName = semana ? semana.textContent.split('\n')[0].trim() : Object.keys(grupos)[0];
+  if(!semanaName || !grupos[semanaName]) {
+    showToast('⚠️ Selecciona una semana primero','error'); return;
+  }
+  if(typeof window.jspdf === 'undefined' && typeof jspdf === 'undefined') {
+    showToast('⏳ Cargando librería PDF...','success');
+    setTimeout(exportGroupsPDF, 1000); return;
+  }
+  var jsPDF = (window.jspdf && window.jspdf.jsPDF) || jspdf.jsPDF;
+  var doc = new jsPDF({orientation:'portrait', unit:'mm', format:'a4'});
+  var pageW = 210, pageH = 297, margin = 14;
+  var y = margin;
+  var colW = (pageW - margin*2 - 6) / 2;
+
+  // Title
+  doc.setFillColor(10,14,20);
+  doc.rect(0,0,pageW,18,'F');
+  doc.setTextColor(255,184,0);
+  doc.setFontSize(14); doc.setFont('helvetica','bold');
+  doc.text('Campus Apolana — ' + semanaName, margin, 12);
+  doc.setTextColor(180,180,180);
+  doc.setFontSize(8); doc.setFont('helvetica','normal');
+  doc.text('Generado ' + new Date().toLocaleDateString('es-ES'), pageW-margin, 12, {align:'right'});
+  y = 26;
+
+  var grupList = grupos[semanaName];
+  var colorMap = {
+    'rojo':'#E53935','verde':'#43A047','azul':'#1E88E5',
+    'amarillo':'#F9A825','naranja':'#FB8C00','morado':'#8E24AA'
+  };
+
+  function hexToRgb(hex) {
+    var r = parseInt(hex.slice(1,3),16), g = parseInt(hex.slice(3,5),16), b = parseInt(hex.slice(5,7),16);
+    return [r,g,b];
+  }
+
+  grupList.forEach(function(grupo, gi) {
+    var name = getGroupName(gi);
+    var colorKey = name.split(' ')[0].toLowerCase();
+    var colorHex = colorMap[colorKey] || '#333333';
+    var rgb = hexToRgb(colorHex);
+    var cardH = 8 + grupo.length * 5.5 + 6;
+    var col = gi % 2;
+    var xPos = margin + col * (colW + 6);
+
+    if(col === 0 && gi > 0) y += 0; // already advanced
+
+    // Check page break
+    if(y + cardH > pageH - 10) {
+      doc.addPage();
+      y = margin;
+    }
+
+    // Card header
+    doc.setFillColor(rgb[0], rgb[1], rgb[2]);
+    doc.roundedRect(xPos, y, colW, 8, 2, 2, 'F');
+    doc.setTextColor(255,255,255);
+    doc.setFontSize(9); doc.setFont('helvetica','bold');
+    doc.text(name + ' · ' + grupo.length + ' niños', xPos+3, y+5.5);
+
+    // Kids list
+    doc.setTextColor(40,40,40);
+    doc.setFont('helvetica','normal');
+    doc.setFontSize(7.5);
+    var ky = y + 11;
+    grupo.forEach(function(k, ki) {
+      if(ki % 2 === 0) {
+        doc.setFillColor(248,249,250);
+        doc.rect(xPos, ky-3.5, colW, 5, 'F');
+      }
+      var kname = (k.nombre||'') + ' ' + (k.apellidos||'');
+      var info = k.anoNac ? 'n.'+k.anoNac : '';
+      if(k.alergias) info += (info?' · ':'') + '⚠️';
+      doc.setTextColor(40,40,40);
+      doc.text(kname.trim().substring(0,32), xPos+2, ky);
+      if(info) { doc.setTextColor(120,120,120); doc.text(info, xPos+colW-2, ky, {align:'right'}); }
+      ky += 5.5;
+    });
+
+    // Advance y for odd groups (right column done)
+    if(col === 1) {
+      y += cardH + 4;
+    } else if(gi === grupList.length-1) {
+      y += cardH + 4;
+    }
+  });
+
+  doc.save('grupos-' + semanaName.replace(' ','-').toLowerCase() + '.pdf');
+  showToast('📄 PDF generado ✅','success');
+}
+
+// ══════════════════════════════════════════════
+// HISTORIAL DE ASISTENCIA COMPLETO
+// ══════════════════════════════════════════════
+function renderHistorialAsist() {
+  var el = document.getElementById('histasist-content');
+  if(!el) return;
+  var semana = document.getElementById('histasist-semana') ? document.getElementById('histasist-semana').value : '';
+  if(!semana) { el.innerHTML = '<p style="color:var(--muted);font-size:.85rem">Selecciona una semana.</p>'; return; }
+  if(!window._fbDB) { el.innerHTML = '<p style="color:red">Firebase no conectado.</p>'; return; }
+  el.innerHTML = '<div style="text-align:center;padding:30px;color:var(--muted)">Cargando...</div>';
+
+  // Get all attendance docs
+  window._fbDB.collection('attendance').get().then(function(snap) {
+    var diasSemana = ['Lunes','Martes','Miércoles','Jueves','Viernes'];
+    // Build: groupCode -> dayDate -> {present, absent, total}
+    var attByGroup = {};
+    snap.forEach(function(doc) {
+      // doc.id = att_CODE_YYYY-MM-DD
+      var parts = doc.id.split('_');
+      if(parts.length < 3) return;
+      var code = parts[1];
+      var date = parts[2];
+      try {
+        var data = JSON.parse(doc.data().data || '{}');
+        var present = Object.values(data).filter(function(v){ return v==='present'||v==='P'; }).length;
+        var absent = Object.values(data).filter(function(v){ return v==='absent'||v==='A'; }).length;
+        if(!attByGroup[code]) attByGroup[code] = {};
+        attByGroup[code][date] = {present:present, absent:absent, total:present+absent};
+      } catch(e) {}
+    });
+
+    // Get groups for this semana
+    if(!grupos[semana] || !grupos[semana].length) {
+      el.innerHTML = '<p style="color:var(--muted)">No hay grupos para '+semana+'.</p>';
+      return;
+    }
+
+    // Get monitorCode for each group
+    var monRaw = null;
+    try { var ms=localStorage.getItem('campusMonitores'); if(ms) monRaw=JSON.parse(ms); } catch(e) {}
+
+    // Build date range for this semana
+    var semIdx = parseInt(semana.replace('Semana ','')) - 1;
+    var allDays = getAllCampusDays ? getAllCampusDays() : [];
+    var weekDays = allDays.filter(function(d){ return getWeekIdxForDay ? getWeekIdxForDay(allDays.indexOf(d))===semIdx : false; });
+
+    // Build table
+    var html = '<div style="overflow-x:auto"><table style="width:100%;border-collapse:collapse;font-size:.8rem;min-width:500px">';
+    html += '<thead><tr style="background:var(--dark)">';
+    html += '<th style="padding:8px 12px;text-align:left;color:#FFB800">Grupo</th>';
+    html += '<th style="padding:8px 12px;text-align:left;color:#FFB800">Monitor</th>';
+    weekDays.forEach(function(d) {
+      var dn = ['Dom','Lun','Mar','Mié','Jue','Vie','Sáb'][d.getDay()];
+      var dd = d.getDate()+'/'+('0'+(d.getMonth()+1)).slice(-2);
+      html += '<th style="padding:8px 8px;color:#aaa;text-align:center;min-width:70px">'+dn+'<br><span style="font-size:.65rem">'+dd+'</span></th>';
+    });
+    html += '<th style="padding:8px 8px;color:#aaa;text-align:center">Total</th>';
+    html += '</tr></thead><tbody>';
+
+    grupos[semana].forEach(function(grupo, gi) {
+      var groupName = getGroupName(gi);
+      var autoCode = makeCode(semana, gi);
+      var monCode = monRaw && monRaw.asignaciones && monRaw.asignaciones[semana] ? (monRaw.asignaciones[semana][gi]||'') : '';
+      var monNombre = '';
+      if(monCode && monRaw && monRaw.monitores) {
+        var mon = monRaw.monitores.find(function(m){ return m.codigo===monCode; });
+        monNombre = mon ? mon.nombre : monCode;
+      }
+
+      html += '<tr style="border-bottom:1px solid #F0F2F5">';
+      html += '<td style="padding:8px 12px;font-weight:600">'+groupName+'</td>';
+      html += '<td style="padding:8px 12px;font-size:.75rem;color:#888">'+( monNombre||'—')+'</td>';
+
+      var totalPresent = 0, totalAbsent = 0, daysRecorded = 0;
+      weekDays.forEach(function(d) {
+        var dateStr = d.getFullYear()+'-'+('0'+(d.getMonth()+1)).slice(-2)+'-'+('0'+d.getDate()).slice(-2);
+        var att = (attByGroup[monCode] && attByGroup[monCode][dateStr]) || (attByGroup[autoCode] && attByGroup[autoCode][dateStr]) || null;
+        if(att) {
+          daysRecorded++;
+          totalPresent += att.present;
+          totalAbsent += att.absent;
+          var pct = att.total ? Math.round(att.present/att.total*100) : 0;
+          var bg = pct>=80?'#E8F5E9':pct>=50?'#FFF9C4':'#FFEBEE';
+          html += '<td style="padding:6px 8px;text-align:center;background:'+bg+'">'+att.present+'✅<br><span style="font-size:.65rem;color:#888">'+att.absent+'❌</span></td>';
+        } else {
+          var dayOfWeek = d.getDay();
+          if(dayOfWeek===0||dayOfWeek===6) {
+            html += '<td style="padding:6px 8px;text-align:center;color:#ddd;font-size:.7rem">—</td>';
+          } else {
+            html += '<td style="padding:6px 8px;text-align:center;color:#ccc;font-size:.7rem">⏳</td>';
+          }
+        }
+      });
+      var avgPct = (totalPresent+totalAbsent) ? Math.round(totalPresent/(totalPresent+totalAbsent)*100) : null;
+      html += '<td style="padding:6px 8px;text-align:center;font-weight:700;font-size:.8rem">'+( avgPct!==null ? avgPct+'%' : '—')+'</td>';
+      html += '</tr>';
+    });
+
+    html += '</tbody></table></div>';
+
+    // Summary
+    var allPresent = 0, allAbsent = 0;
+    Object.values(attByGroup).forEach(function(days) {
+      Object.values(days).forEach(function(d) { allPresent+=d.present; allAbsent+=d.absent; });
+    });
+    var totalReg = allPresent+allAbsent;
+    if(totalReg) {
+      html += '<div style="margin-top:12px;font-size:.82rem;color:#555">'+
+        'Total registrado esta semana: <strong>'+allPresent+' presentes</strong> · <strong>'+allAbsent+' ausentes</strong> · '+
+        Math.round(allPresent/totalReg*100)+'% asistencia media</div>';
+    }
+
+    el.innerHTML = html;
+  }).catch(function(e) {
+    el.innerHTML = '<p style="color:red">Error: '+e.message+'</p>';
+  });
+}
+
 // ══════════════════════════════════════════════
 // QR CODES
 // ══════════════════════════════════════════════
@@ -4214,7 +4887,7 @@ function showGlobalAttendance() {
   modal.innerHTML = '<div style="background:#fff;border-radius:16px;padding:28px;max-width:720px;width:100%;max-height:85vh;overflow-y:auto">' +
     '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:18px">' +
     '<div style="font-weight:800;font-size:1.2rem">📊 Asistencia global hoy</div>' +
-    '<button onclick="(function(el){while(el.parentElement)el=el.parentElement;el.querySelector(\'div[style]\').remove();})(this)" style="background:none;border:none;font-size:1.4rem;cursor:pointer;color:#aaa">✕</button>' +
+    '<button onclick="closeModal(this)">✕</button>' +
     '</div>' +
     '<div id="globalAttList">Cargando...</div>' +
     '</div>';
@@ -4323,6 +4996,121 @@ const SESSION_KEY = 'campus_session';
 const SESSION_HOURS = 8; // session expires after 8 hours
 
 // ══════════════════════════════════════════════
+// AVISOS DEL DÍA
+// ══════════════════════════════════════════════
+function loadAviso() {
+  if(!window._fbDB) return;
+  window._fbDB.collection('campus').doc('aviso').get().then(function(snap) {
+    if(snap.exists && snap.data().texto) {
+      window._avisoText = snap.data().texto;
+      showAvisoBanner(snap.data().texto);
+    }
+  }).catch(function(){});
+}
+
+function showAvisoBanner(texto) {
+  var b = document.getElementById('avisoBanner');
+  var t = document.getElementById('avisoBannerText');
+  if(b && t && texto) { t.textContent = texto; b.style.display = 'flex'; }
+}
+
+function editAviso() {
+  var current = window._avisoText || '';
+  var texto = prompt('Aviso del día para los monitores (deja vacío para borrar):', current);
+  if(texto === null) return;
+  texto = texto.trim();
+  window._avisoText = texto;
+  if(window._fbDB) {
+    window._fbDB.collection('campus').doc('aviso').set({texto: texto, updated: new Date()}).then(function() {
+      showToast(texto ? '📢 Aviso guardado' : '📢 Aviso borrado', 'success');
+      if(texto) showAvisoBanner(texto);
+      else { var b=document.getElementById('avisoBanner'); if(b) b.style.display='none'; }
+    });
+  }
+}
+
+function clearAviso() {
+  if(!confirm('¿Borrar el aviso del día?')) return;
+  window._avisoText = '';
+  if(window._fbDB) {
+    window._fbDB.collection('campus').doc('aviso').set({texto:'', updated: new Date()});
+  }
+  var b = document.getElementById('avisoBanner');
+  if(b) b.style.display = 'none';
+}
+
+// ══════════════════════════════════════════════
+// ALERTA NIÑOS SIN GRUPO
+// ══════════════════════════════════════════════
+function checkUnassignedKids() {
+  var banner = document.getElementById('unassignedBanner');
+  if(!banner) return;
+  // Get all kids assigned to any group
+  var assigned = new Set();
+  Object.keys(grupos).forEach(function(s) {
+    grupos[s].forEach(function(g) {
+      g.forEach(function(k) { assigned.add(k.id); });
+    });
+  });
+  // Compare with allKids
+  var unassigned = (window.allKids||[]).filter(function(k){ return !assigned.has(k.id); });
+  if(unassigned.length) {
+    banner.style.display = 'flex';
+    document.getElementById('unassignedCount').textContent = unassigned.length;
+    document.getElementById('unassignedNames').textContent = unassigned.slice(0,5).map(function(k){
+      return k.nombre + (k.apellidos?' '+k.apellidos:'');
+    }).join(', ') + (unassigned.length>5?' y '+(unassigned.length-5)+' más...':'');
+  } else {
+    banner.style.display = 'none';
+  }
+}
+
+// ══════════════════════════════════════════════
+// RECORDATORIO DE GUARDAR
+// ══════════════════════════════════════════════
+window._unsavedChanges = false;
+
+function updateSaveReminder() {
+  var btn = document.getElementById('saveFirebaseBtn');
+  var reminder = document.getElementById('saveReminder');
+  if(window._unsavedChanges) {
+    if(btn) { btn.style.animation = 'pulse 1.5s infinite'; btn.style.background = '#FF6B35'; btn.textContent = '🔥 Guardar cambios ⚠️'; }
+    if(reminder) reminder.style.display = 'flex';
+  } else {
+    if(btn) { btn.style.animation = ''; btn.style.background = ''; btn.textContent = '🔥 Guardar en Firebase'; }
+    if(reminder) reminder.style.display = 'none';
+  }
+}
+
+window.addEventListener('beforeunload', function(e) {
+  if(window._unsavedChanges) {
+    e.preventDefault();
+    e.returnValue = 'Tienes cambios sin guardar en Firebase. ¿Seguro que quieres salir?';
+    return e.returnValue;
+  }
+});
+
+// ══════════════════════════════════════════════
+// MODAL CLOSE HELPER
+// ══════════════════════════════════════════════
+function closeModal(btn) {
+  // Walk up from button to find the fixed/modal overlay and remove it
+  var el = btn;
+  while (el) {
+    var s = el.style;
+    if (s && (s.position === 'fixed' || s.zIndex === '9999' || (s.cssText && s.cssText.includes('fixed')))) {
+      el.remove();
+      return;
+    }
+    el = el.parentElement;
+  }
+  // Fallback: remove closest div ancestor of the button
+  if (btn.parentElement && btn.parentElement.parentElement) {
+    btn.parentElement.parentElement.remove();
+  }
+}
+
+// ══════════════════════════════════════════════
 // ACCESS LOG
 // ══════════════════════════════════════════════
 function logAccessEntry(who, action) {
@@ -4349,7 +5137,7 @@ function showAccessLog() {
   modal.innerHTML = '<div style="background:#fff;border-radius:16px;padding:28px;max-width:600px;width:100%;max-height:80vh;overflow-y:auto">' +
     '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px">' +
     '<div style="font-weight:800;font-size:1.1rem">🔐 Registro de accesos</div>' +
-    '<button onclick="(function(el){while(el.parentElement)el=el.parentElement;el.querySelector(\'div[style]\').remove();})(this)" style="background:none;border:none;font-size:1.4rem;cursor:pointer;color:#aaa">✕</button>' +
+    '<button onclick="closeModal(this)">✕</button>' +
     '</div><div id="accessLogList">Cargando...</div></div>';
   document.body.appendChild(modal);
 
@@ -4532,10 +5320,67 @@ document.addEventListener('DOMContentLoaded', function() {
   <button class="mobile-nav-btn" id="mbn-monitores" onclick="showViewMobile('monitores',this)">
     <span>👥</span><span>Monitores</span>
   </button>
+  <button class="mobile-nav-btn" id="mbn-histasist" onclick="showViewMobile('histasist',this)">
+    <span>📅</span><span>Historial</span>
+  </button>
+  <button class="mobile-nav-btn" id="mbn-stats" onclick="showViewMobile('stats',this)">
+    <span>📊</span><span>Stats</span>
+  </button>
   <button class="mobile-nav-btn" id="mbn-qr" onclick="showViewMobile('qr',this)">
     <span>📲</span><span>QR</span>
   </button>
 </nav>
+
+<!-- ══════════ VISTA INCIDENCIAS ══════════ -->
+<div class="view" id="view-incidencias">
+  <div class="container" style="max-width:760px">
+    <div class="card">
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px;flex-wrap:wrap;gap:10px">
+        <div>
+          <div class="card-title" style="margin:0">📬 Incidencias de padres</div>
+          <div class="card-desc" style="margin:0">Mensajes enviados desde el portal de padres</div>
+        </div>
+        <button class="btn btn-outline btn-sm" onclick="loadIncidencias()">🔄 Actualizar</button>
+      </div>
+      <div id="incidencias-list"><div style="text-align:center;padding:30px;color:var(--muted)">Cargando...</div></div>
+    </div>
+  </div>
+</div>
+
+<!-- ══════════ VISTA HISTORIAL ASISTENCIA ══════════ -->
+<div class="view" id="view-histasist">
+  <div class="container" style="max-width:900px">
+    <div class="card">
+      <div class="card-title">📅 Historial de asistencia</div>
+      <div class="card-desc">Resumen de asistencia por grupo y día de toda la semana</div>
+      <div style="display:flex;gap:10px;margin-bottom:16px;flex-wrap:wrap;align-items:flex-end">
+        <div class="field" style="min-width:160px">
+          <label>Semana</label>
+          <select id="histasist-semana" onchange="renderHistorialAsist()" style="margin-top:4px">
+            <option value="">— Selecciona semana —</option>
+            <option value="Semana 1">Semana 1</option>
+            <option value="Semana 2">Semana 2</option>
+            <option value="Semana 3">Semana 3</option>
+            <option value="Semana 4">Semana 4</option>
+            <option value="Semana 5">Semana 5</option>
+          </select>
+        </div>
+        <button class="btn btn-outline btn-sm" onclick="renderHistorialAsist()">🔄 Actualizar</button>
+      </div>
+      <div id="histasist-content"><p style="color:var(--muted);font-size:.85rem">Selecciona una semana para ver el historial.</p></div>
+    </div>
+  </div>
+</div>
+
+<!-- ══════════ VISTA STATS ══════════ -->
+<div class="view" id="view-stats">
+  <div class="container" style="max-width:800px">
+    <div class="card" style="margin-bottom:16px">
+      <div class="card-title">📊 Estadísticas del campus</div>
+      <div id="statsContent"><div style="text-align:center;padding:40px;color:var(--muted)">Cargando estadísticas...</div></div>
+    </div>
+  </div>
+</div>
 
 <!-- ══════════ VISTA QR ══════════ -->
 <div class="view" id="view-qr">

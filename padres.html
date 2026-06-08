@@ -307,7 +307,19 @@ footer a:hover { color: #FFB800; }
 
 <div style="max-width:480px;margin:24px auto 0;background:#FFF9EC;border:1px solid #FFE08A;border-radius:14px;padding:16px 20px;font-size:.82rem;color:#7A5C00;line-height:1.6">
   <div style="font-weight:700;margin-bottom:6px">ℹ️ Sobre los colores de grupo</div>
-  Es posible que el color del grupo de tu hijo/a cambie entre semanas. Esto es simplemente por organización interna del campus y <strong>no significa ningún cambio real</strong>: el monitor, los amigos asignados y la dinámica del grupo se mantienen igual. ¡No te preocupes!
+  Es posible que el color del grupo de tu hijo/a cambie entre semanas por motivos de organización interna. En la mayoría de casos <strong>no implica ningún cambio real</strong> en el monitor ni en los compañeros, aunque en ocasiones puede haber algún ajuste puntual. Si tienes dudas, puedes escribirnos a través del formulario de abajo.
+</div>
+
+<div style="max-width:480px;margin:24px auto 0;background:#fff;border:1px solid #e0e0e0;border-radius:14px;padding:20px;font-size:.85rem">
+  <div style="font-weight:700;font-size:.95rem;margin-bottom:4px">📬 ¿Tienes alguna incidencia?</div>
+  <div style="color:#888;font-size:.78rem;margin-bottom:14px">Puedes enviarnos un mensaje y te responderemos lo antes posible.</div>
+  <div style="display:flex;flex-direction:column;gap:10px">
+    <input id="inc-nombre" type="text" placeholder="Tu nombre" style="border:1px solid #ddd;border-radius:8px;padding:9px 12px;font-size:.85rem;font-family:inherit;outline:none">
+    <input id="inc-nino" type="text" placeholder="Nombre de tu hijo/a" style="border:1px solid #ddd;border-radius:8px;padding:9px 12px;font-size:.85rem;font-family:inherit;outline:none">
+    <textarea id="inc-texto" placeholder="Describe la incidencia..." rows="3" style="border:1px solid #ddd;border-radius:8px;padding:9px 12px;font-size:.85rem;font-family:inherit;resize:vertical;outline:none"></textarea>
+    <button onclick="enviarIncidencia()" id="inc-btn" style="background:#0A0E14;color:#FFB800;border:none;border-radius:8px;padding:11px;font-size:.88rem;font-weight:700;cursor:pointer;font-family:inherit">Enviar mensaje →</button>
+    <div id="inc-ok" style="display:none;background:#EDFBF3;border:1px solid #A3E6C0;border-radius:8px;padding:10px;color:#1A7A45;font-size:.82rem;text-align:center">✅ Mensaje enviado. Te responderemos pronto.</div>
+  </div>
 </div>
 
 <footer>
@@ -532,6 +544,32 @@ function renderKidCard(entries) {
     </div>`;
 }
 
+
+function enviarIncidencia() {
+  var nombre = document.getElementById('inc-nombre').value.trim();
+  var nino = document.getElementById('inc-nino').value.trim();
+  var texto = document.getElementById('inc-texto').value.trim();
+  if(!nombre || !nino || !texto) { alert('Por favor rellena todos los campos.'); return; }
+  if(!window._fbDB) { alert('Sin conexión. Inténtalo de nuevo.'); return; }
+  var btn = document.getElementById('inc-btn');
+  btn.textContent = 'Enviando...'; btn.disabled = true;
+  window._fbDB.collection('incidencias').add({
+    nombre: nombre,
+    nino: nino,
+    texto: texto,
+    fecha: new Date(),
+    leida: false
+  }).then(function() {
+    document.getElementById('inc-ok').style.display = 'block';
+    document.getElementById('inc-nombre').value = '';
+    document.getElementById('inc-nino').value = '';
+    document.getElementById('inc-texto').value = '';
+    btn.style.display = 'none';
+  }).catch(function(e) {
+    btn.textContent = 'Enviar mensaje →'; btn.disabled = false;
+    alert('Error al enviar: ' + e.message);
+  });
+}
 
 </script>
 </body>
