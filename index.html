@@ -221,6 +221,8 @@ pre.export-text{background:#F6F8FA;border-radius:var(--radius-sm);padding:14px;f
 @media(min-width:641px){
   #actionBtns{display:flex !important;flex-wrap:wrap}
   #actionBtns .btn{font-size:.85rem;padding:8px 14px}
+  .turno-tabs{display:flex !important;flex-wrap:wrap;overflow:visible}
+  .steps{display:flex !important;flex-wrap:wrap;overflow:visible}
 }
 
 /* MOBILE BOTTOM NAV */
@@ -1382,14 +1384,16 @@ function renderNinoRow(kid,color,turno,gi){
     ${fHere.length?'<span class="tag tag-friend">👫</span>':''}
     ${fOut.length?`<span class="tag tag-warn" title="Pedía: ${fOut.join(', ')}">!</span>`:''}
     <button onclick="openObsModal('${encodeURIComponent(name)}','${esc(turno)}')" style="background:none;border:1px solid #ddd;border-radius:6px;padding:3px 7px;cursor:pointer;font-size:.72rem;color:#888;margin-left:2px" title="Editar observaciones">✏️</button>
-    ${editMode?`<button onclick="removeKidFromGroup('${kid.id}','${esc(turno)}',${gi})" style="background:none;border:1px solid #ffb3b3;border-radius:6px;padding:3px 7px;cursor:pointer;font-size:.72rem;color:#cc0000;margin-left:2px" title="Eliminar de este grupo">🗑️</button>`:''}
+    <button class="edit-only-btn" onclick="removeKidFromGroup(this)" data-id="${kid.id}" data-turno="${esc(turno)}" data-gi="${gi}" style="display:none;background:none;border:1px solid #ffb3b3;border-radius:6px;padding:3px 7px;cursor:pointer;font-size:.72rem;color:#cc0000;margin-left:2px" title="Eliminar de este grupo">🗑️</button>
   </div>`;
 }
 
 let dragKidId=null,dragFromTurno=null,dragFromGi=null;
 
-function removeKidFromGroup(kidId, turno, gi) {
+function removeKidFromGroup(btnOrId, turno, gi) {
   if(!editMode) return;
+  var kidId = typeof btnOrId === 'object' ? btnOrId.dataset.id : btnOrId;
+  if(typeof btnOrId === 'object') { turno = btnOrId.dataset.turno; gi = parseInt(btnOrId.dataset.gi); }
   if(!confirm('¿Eliminar este niño de ' + turno + '?')) return;
   var idx = grupos[turno][gi].findIndex(function(k){ return String(k.id)===String(kidId); });
   if(idx >= 0) {
@@ -1478,6 +1482,7 @@ function toggleEdit(){
   if(btn) btn.textContent=editMode?'🔒 Salir edición':'✏️ Editar grupos';
   if(btn) btn.className=editMode?'btn btn-danger':'btn btn-primary';
   document.querySelectorAll('.drag-handle').forEach(h=>h.style.color=editMode?'#0066FF':'#ccc');
+  document.querySelectorAll('.edit-only-btn').forEach(b=>b.style.display=editMode?'inline-block':'none');
   setupDragDrop();
 }
 
