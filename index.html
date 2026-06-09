@@ -391,7 +391,7 @@ pre.export-text{background:#F6F8FA;border-radius:var(--radius-sm);padding:14px;f
         oninput="searchKidInGroups(this.value)"
         style="width:100%;padding:9px 14px;border:1.5px solid var(--border);border-radius:20px;font-family:'Instrument Sans',sans-serif;font-size:.82rem;outline:none;transition:border-color .2s;background:#fff"
         onfocus="this.style.borderColor='var(--sky)'" onblur="this.style.borderColor='var(--border)'">
-      <div id="kidSearchResults" style="display:none;position:absolute;top:calc(100% + 4px);left:0;right:0;background:#fff;border:1px solid var(--border);border-radius:10px;box-shadow:0 8px 24px rgba(0,0,0,.1);z-index:100;max-height:280px;overflow-y:auto"></div>
+      <div id="kidSearchResults" style="display:none;position:absolute;top:calc(100% + 4px);left:0;right:0;background:#fff;border:1px solid var(--border);border-radius:10px;box-shadow:0 8px 24px rgba(0,0,0,.1);z-index:9000;max-height:320px;overflow-y:auto"></div>
     </div>
   </div>
 
@@ -4149,22 +4149,142 @@ function searchKidInGroups(q) {
     res.innerHTML='<div style="padding:14px 16px;color:#888;font-size:.85rem">😕 No encontrado</div>';
     return;
   }
+  // Group hits by kid name
+  const byKid = {};
+  hits.forEach(h => {
+    if(!byKid[h.name]) byKid[h.name] = {kid:h.kid, semanas:[]};
+    byKid[h.name].semanas.push({semana:h.semana, gi:h.gi});
+  });
+
   res.style.display='block';
-  res.innerHTML = hits.slice(0,10).map(h => {
-    const color = getGroupColor(h.gi);
-    const gname = getGroupName(h.gi);
-    const ale = h.kid.alergias ? `<span style="color:#E74C3C;font-size:.7rem">⚠️ ${h.kid.alergias}</span>` : '';
-    const com = h.kid.comedor ? '<span style="color:#F39C12;font-size:.7rem">🍽️</span>' : '';
-    return `<div onclick="jumpToKid('${esc(h.semana)}',${h.gi},'${encodeURIComponent(h.name)}')"
+  res.innerHTML = Object.entries(byKid).slice(0,8).map(([name, data]) => {
+    const semanasList = data.semanas.map(s => {
+      const color = getGroupColor(s.gi);
+      const gname = getGroupName(s.gi);
+      return `<span style="background:${color}22;border:1px solid ${color}55;color:${color};border-radius:5px;padding:1px 7px;font-size:.68rem;font-weight:600">${s.semana.replace('Semana ','S')} · ${gname}</span>`;
+    }).join(' ');
+    const ale = data.kid.alergias ? `<span style="color:#E74C3C;font-size:.7rem">⚠️</span>` : '';
+    const com = data.kid.comedor ? '<span style="font-size:.7rem">🍽️</span>' : '';
+    return `<div onclick="openKidAssignModal('${encodeURIComponent(name)}')"
       style="padding:10px 14px;cursor:pointer;border-bottom:1px solid #F0F2F5;display:flex;align-items:center;gap:10px;transition:background .15s"
       onmouseover="this.style.background='#F7FAFF'" onmouseout="this.style.background='#fff'">
-      <div style="width:8px;height:8px;border-radius:50%;background:${color};flex-shrink:0"></div>
       <div style="flex:1">
-        <div style="font-weight:600;font-size:.85rem">${h.name}</div>
-        <div style="font-size:.72rem;color:#888">${h.semana} · ${gname} ${com} ${ale}</div>
+        <div style="font-weight:600;font-size:.85rem">${name} ${com} ${ale}</div>
+        <div style="font-size:.72rem;color:#888;margin-top:3px;display:flex;gap:4px;flex-wrap:wrap">${semanasList || '<span style="color:#ccc">Sin semanas asignadas</span>'}</div>
       </div>
+      <span style="color:#aaa;font-size:.8rem">✏️</span>
     </div>`;
   }).join('');
+}
+
+function openKidAssignModal(encodedName) {
+  const res = document.getElementById('kidSearchResults');
+  if(res) res.style.display='none';
+  const inp = document.getElementById('kidSearchInput');
+  if(inp) inp.value='';
+
+  const name = decodeURIComponent(encodedName);
+  const semanas = Object.keys(grupos);
+
+  // Find kid data from any semana
+  let kidData = null;
+  semanas.forEach(s => { grupos[s].forEach(g => { g.forEach(k => { if(fullName(k)===name && !kidData) kidData=k; }); }); });
+
+  const modal = document.createElement('div');
+  modal.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,.6);z-index:9999;display:flex;align-items:center;justify-content:center;padding:16px';
+
+  const card = document.createElement('div');
+  card.style.cssText = 'background:#fff;border-radius:16px;padding:24px;max-width:520px;width:100%;max-height:85vh;overflow-y:auto';
+
+  // Header
+  const header = document.createElement('div');
+  header.style.cssText = 'display:flex;justify-content:space-between;align-items:center;margin-bottom:18px';
+  header.innerHTML = '<div style="font-weight:800;font-size:1.1rem">✏️ ' + name + '</div>';
+  const btnClose = document.createElement('button');
+  btnClose.style.cssText = 'background:none;border:none;font-size:1.4rem;cursor:pointer;color:#aaa';
+  btnClose.textContent = '✕';
+  btnClose.onclick = function(){ modal.remove(); };
+  header.appendChild(btnClose);
+  card.appendChild(header);
+
+  // For each semana: show current group + selector to change
+  semanas.forEach(function(semana) {
+    const semanaDiv = document.createElement('div');
+    semanaDiv.style.cssText = 'margin-bottom:12px;padding:12px 14px;background:#f8f9fa;border-radius:10px;border:1px solid #eee';
+
+    // Find current group in this semana
+    let currentGi = -1;
+    grupos[semana].forEach(function(g, gi) {
+      if(g.find(function(k){ return fullName(k)===name; })) currentGi = gi;
+    });
+
+    const label = document.createElement('div');
+    label.style.cssText = 'font-weight:700;font-size:.85rem;margin-bottom:8px;color:#333';
+    label.textContent = semana;
+    semanaDiv.appendChild(label);
+
+    const row = document.createElement('div');
+    row.style.cssText = 'display:flex;gap:8px;align-items:center';
+
+    // Current status
+    const status = document.createElement('div');
+    status.style.cssText = 'flex:1;font-size:.82rem;color:' + (currentGi>=0?'var(--grass)':'#aaa');
+    status.textContent = currentGi>=0 ? '✅ ' + getGroupName(currentGi) : '— Sin asignar';
+    row.appendChild(status);
+
+    // Group selector
+    const sel = document.createElement('select');
+    sel.style.cssText = 'border:1px solid var(--border);border-radius:7px;padding:5px 8px;font-size:.78rem;max-width:160px';
+    const optNone = document.createElement('option');
+    optNone.value = '-1'; optNone.textContent = currentGi>=0 ? '🗑️ Quitar de esta semana' : '— No asignar —';
+    sel.appendChild(optNone);
+    grupos[semana].forEach(function(g, gi) {
+      const opt = document.createElement('option');
+      opt.value = gi;
+      opt.textContent = getGroupName(gi) + ' (' + g.length + ')';
+      if(gi === currentGi) opt.selected = true;
+      sel.appendChild(opt);
+    });
+
+    const btnSave = document.createElement('button');
+    btnSave.className = 'btn btn-primary btn-sm';
+    btnSave.textContent = 'Guardar';
+    btnSave.addEventListener('click', (function(s, cgi, selEl, statusEl){
+      return function() {
+        const newGi = parseInt(selEl.value);
+        // Remove from current group
+        if(cgi >= 0 && grupos[s][cgi]) {
+          const idx = grupos[s][cgi].findIndex(function(k){ return fullName(k)===name; });
+          if(idx>=0) grupos[s][cgi].splice(idx,1);
+        }
+        // Add to new group
+        if(newGi >= 0 && grupos[s][newGi] && kidData) {
+          const kidCopy = JSON.parse(JSON.stringify(kidData));
+          kidCopy.turno = s;
+          grupos[s][newGi].push(kidCopy);
+          statusEl.style.color = 'var(--grass)';
+          statusEl.textContent = '✅ ' + getGroupName(newGi);
+          logChange('move', name + ' asignado a ' + getGroupName(newGi) + ' en ' + s);
+        } else if(newGi < 0) {
+          statusEl.style.color = '#aaa';
+          statusEl.textContent = '— Sin asignar';
+          logChange('remove', name + ' quitado de ' + s);
+        }
+        saveToStorage();
+        window._unsavedChanges = true;
+        updateSaveReminder();
+        showToast('✅ ' + s + ' actualizado','success');
+      };
+    })(semana, currentGi, sel, status));
+
+    row.appendChild(sel);
+    row.appendChild(btnSave);
+    semanaDiv.appendChild(row);
+    card.appendChild(semanaDiv);
+  });
+
+  modal.appendChild(card);
+  document.body.appendChild(modal);
 }
 
 function jumpToKid(turnoEsc, gi, encodedName) {
