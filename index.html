@@ -1428,6 +1428,7 @@ function renameKid(btn) {
   var turno = btn.dataset.turno;
   var gi = parseInt(btn.dataset.gi);
   try { turno = decodeURIComponent(turno); } catch(e) {}
+  turno = turno.replace(/_/g, ' ');
   if(!grupos[turno] || !grupos[turno][gi]) return;
 
   var kid = grupos[turno][gi].find(function(k){ return String(k.id)===String(kidId); });
@@ -1469,8 +1470,9 @@ function removeKidFromGroup(btnOrId, turno, gi) {
   var kidId = typeof btnOrId === 'object' ? btnOrId.dataset.id : btnOrId;
   if(typeof btnOrId === 'object') { turno = btnOrId.dataset.turno; gi = parseInt(btnOrId.dataset.gi); }
   gi = parseInt(gi);
-  // Decode turno in case it was URL-encoded
+  // Decode turno - esc() replaces spaces with underscores, reverse it
   try { turno = decodeURIComponent(turno); } catch(e) {}
+  turno = turno.replace(/_/g, ' ');
   if(!grupos[turno] || !grupos[turno][gi]) { showToast('⚠️ Grupo no encontrado: ' + turno + '[' + gi + ']','error'); return; }
   if(!confirm('¿Eliminar este niño/a de ' + getGroupName(gi) + ' (' + turno + ')?')) return;
 
