@@ -1364,7 +1364,7 @@ function renderGruposGrid(turno){
         </div>
       </div>
     </div>`;
-  }).join('');
+  });
 }
 
 function renderNinoRow(kid,color,turno,gi){
@@ -4157,7 +4157,8 @@ function searchKidInGroups(q) {
   });
 
   res.style.display='block';
-  res.innerHTML = Object.entries(byKid).slice(0,8).map(([name, data]) => {
+  res.innerHTML = '';
+  Object.entries(byKid).slice(0,8).forEach(([name, data]) => {
     const semanasList = data.semanas.map(s => {
       const color = getGroupColor(s.gi);
       const gname = getGroupName(s.gi);
@@ -4165,15 +4166,14 @@ function searchKidInGroups(q) {
     }).join(' ');
     const ale = data.kid.alergias ? `<span style="color:#E74C3C;font-size:.7rem">⚠️</span>` : '';
     const com = data.kid.comedor ? '<span style="font-size:.7rem">🍽️</span>' : '';
-    return `<div onclick="openKidAssignModal('${encodeURIComponent(name)}')"
-      style="padding:10px 14px;cursor:pointer;border-bottom:1px solid #F0F2F5;display:flex;align-items:center;gap:10px;transition:background .15s"
-      onmouseover="this.style.background='#F7FAFF'" onmouseout="this.style.background='#fff'">
-      <div style="flex:1">
-        <div style="font-weight:600;font-size:.85rem">${name} ${com} ${ale}</div>
-        <div style="font-size:.72rem;color:#888;margin-top:3px;display:flex;gap:4px;flex-wrap:wrap">${semanasList || '<span style="color:#ccc">Sin semanas asignadas</span>'}</div>
-      </div>
-      <span style="color:#aaa;font-size:.8rem">✏️</span>
-    </div>`;
+    const div = document.createElement('div');
+    div.style.cssText = 'padding:10px 14px;cursor:pointer;border-bottom:1px solid #F0F2F5;display:flex;align-items:center;gap:10px';
+    div.dataset.kidname = name;
+    div.innerHTML = '<div style="flex:1"><div style="font-weight:600;font-size:.85rem">' + name + ' ' + com + ' ' + ale + '</div><div style="font-size:.72rem;color:#888;margin-top:3px;display:flex;gap:4px;flex-wrap:wrap">' + (semanasList || '<span style="color:#ccc">Sin semanas asignadas</span>') + '</div></div><span style="color:#aaa;font-size:.8rem">✏️</span>';
+    div.addEventListener('mouseover', function(){ this.style.background='#F7FAFF'; });
+    div.addEventListener('mouseout', function(){ this.style.background=''; });
+    div.addEventListener('click', function(){ openKidAssignModal(encodeURIComponent(this.dataset.kidname)); });
+    res.appendChild(div);
   }).join('');
 }
 
