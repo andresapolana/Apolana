@@ -1309,6 +1309,8 @@ function renderResults(){
     <button class="btn btn-outline" onclick="showGlobalAttendance()">🌐 Global</button>
     <button class="btn btn-outline" onclick="editAviso()">📢 Aviso del día</button>
     <button class="btn btn-outline" onclick="exportGroupsPDF()">📄 PDF grupos</button>
+    <button class="btn btn-outline" onclick="exportTallas()">👕 Tallas</button>
+    <button class="btn btn-outline" onclick="exportInformeAsistencia()">📊 Informe final</button>
     <button class="btn btn-outline" onclick="backupGrupos('backup-campus')">💾 Backup</button>
     <button class="btn btn-success" onclick="saveGruposManual()" id="saveFirebaseBtn">🔥 Firebase</button>
     <button class="btn btn-danger" onclick="resetGroups()" style="grid-column:1/-1">🗑️ Reiniciar</button>
@@ -1380,10 +1382,28 @@ function renderNinoRow(kid,color,turno,gi){
     ${fHere.length?'<span class="tag tag-friend">👫</span>':''}
     ${fOut.length?`<span class="tag tag-warn" title="Pedía: ${fOut.join(', ')}">!</span>`:''}
     <button onclick="openObsModal('${encodeURIComponent(name)}','${esc(turno)}')" style="background:none;border:1px solid #ddd;border-radius:6px;padding:3px 7px;cursor:pointer;font-size:.72rem;color:#888;margin-left:2px" title="Editar observaciones">✏️</button>
+    ${editMode?`<button onclick="removeKidFromGroup('${kid.id}','${esc(turno)}',${gi})" style="background:none;border:1px solid #ffb3b3;border-radius:6px;padding:3px 7px;cursor:pointer;font-size:.72rem;color:#cc0000;margin-left:2px" title="Eliminar de este grupo">🗑️</button>`:''}
   </div>`;
 }
 
 let dragKidId=null,dragFromTurno=null,dragFromGi=null;
+
+function removeKidFromGroup(kidId, turno, gi) {
+  if(!editMode) return;
+  if(!confirm('¿Eliminar este niño de ' + turno + '?')) return;
+  var idx = grupos[turno][gi].findIndex(function(k){ return String(k.id)===String(kidId); });
+  if(idx >= 0) {
+    var kid = grupos[turno][gi][idx];
+    grupos[turno][gi].splice(idx, 1);
+    saveToStorage();
+    window._unsavedChanges = true;
+    updateSaveReminder();
+    refreshGrid(turno);
+    setupDragDrop();
+    showToast('🗑️ ' + fullName(kid) + ' eliminado de ' + turno, 'success');
+    logChange('remove', fullName(kid) + ' eliminado de ' + getGroupName(gi) + ' (' + turno + ')');
+  }
+}
 
 function setupDragDrop(){
   document.querySelectorAll('.nino-row').forEach(el=>{
@@ -2348,6 +2368,169 @@ function backupGrupos(filename) {
   a.click();
   URL.revokeObjectURL(url);
   showToast('💾 Backup descargado','success',2000);
+}
+
+// ══════════════════════════════════════════════
+// EXPORTAR TALLAS DE CAMISETA
+// ══════════════════════════════════════════════
+function exportTallas() {
+  if(!Object.keys(grupos).length) { showToast('⚠️ No hay grupos cargados','error'); return; }
+
+  var wb = XLSX.utils.book_new();
+  var semanas = Object.keys(grupos);
+
+  semanas.forEach(function(semana) {
+    var rows = [['Grupo','Nombre completo','Año nac.','Talla','Comedor','Alergias']];
+    grupos[semana].forEach(function(grupo, gi) {
+      var groupName = getGroupName(gi);
+      grupo.forEach(function(k) {
+        rows.push([
+          groupName,
+          fullName(k),
+          k.anoNac||'',
+          k.talla||'—',
+          k.comedor?'Sí':'No',
+          k.alergias||''
+        ]);
+      });
+      rows.push(['','','','','','']); // blank row between groups
+    });
+
+    var ws = XLSX.utils.aoa_to_sheet(rows);
+    ws['!cols'] = [{wch:14},{wch:28},{wch:10},{wch:10},{wch:10},{wch:24}];
+
+    // Style header
+    var headerStyle = {fill:{fgColor:{rgb:'0A0E14'}},font:{bold:true,color:{rgb:'FFB800'}}};
+    ['A1','B1','C1','D1','E1','F1'].forEach(function(cell) {
+      if(ws[cell]) ws[cell].s = headerStyle;
+    });
+
+    XLSX.utils.book_append_sheet(wb, ws, semana.replace('Semana ','S'));
+  });
+
+  // Summary sheet: all kids unique, sorted by talla
+  var allKids = [];
+  var seen = new Set();
+  semanas.forEach(function(s) {
+    grupos[s].forEach(function(g) {
+      g.forEach(function(k) {
+        var uid = (k.nombre||'')+'_'+(k.apellidos||'');
+        if(!seen.has(uid)) {
+          seen.add(uid);
+          allKids.push(k);
+        }
+      });
+    });
+  });
+
+  // Count by talla
+  var tallaCounts = {};
+  allKids.forEach(function(k) {
+    var t = (k.talla||'Sin dato').toUpperCase().trim();
+    tallaCounts[t] = (tallaCounts[t]||0)+1;
+  });
+
+  var resumenRows = [['Talla','Cantidad']];
+  var order = ['2','4','6','8','10','12','14','XS','S','M','L','XL','XXL','SIN DATO'];
+  var sorted = Object.entries(tallaCounts).sort(function(a,b) {
+    var ia = order.indexOf(a[0]), ib = order.indexOf(b[0]);
+    if(ia<0) ia=99; if(ib<0) ib=99;
+    return ia-ib;
+  });
+  sorted.forEach(function(e) { resumenRows.push([e[0], e[1]]); });
+  resumenRows.push(['TOTAL', allKids.length]);
+
+  var wsRes = XLSX.utils.aoa_to_sheet(resumenRows);
+  wsRes['!cols'] = [{wch:12},{wch:12}];
+  XLSX.utils.book_append_sheet(wb, wsRes, 'Resumen tallas');
+
+  XLSX.writeFile(wb, 'tallas-camiseta.xlsx');
+  showToast('👕 Excel de tallas generado ✅','success');
+}
+
+// ══════════════════════════════════════════════
+// INFORME FINAL DE ASISTENCIA
+// ══════════════════════════════════════════════
+function exportInformeAsistencia() {
+  if(!window._fbDB) { showToast('⚠️ Necesitas Firebase conectado','error'); return; }
+  showToast('⏳ Generando informe...','success');
+
+  window._fbDB.collection('attendance').get().then(function(snap) {
+    // Build: kidCode -> {semana, dates: {date: status}}
+    var attData = {};
+    snap.forEach(function(doc) {
+      var parts = doc.id.split('_');
+      if(parts.length < 3) return;
+      var code = parts[1];
+      var date = parts[2];
+      try {
+        var data = JSON.parse(doc.data().data||'{}');
+        if(!attData[code]) attData[code] = {};
+        attData[code][date] = data;
+      } catch(e) {}
+    });
+
+    var wb = XLSX.utils.book_new();
+    var semanas = Object.keys(grupos);
+
+    semanas.forEach(function(semana) {
+      // Get all dates recorded for this semana's groups
+      var allDates = new Set();
+      grupos[semana].forEach(function(grupo, gi) {
+        var autoCode = makeCode(semana, gi);
+        var monRaw = null;
+        try { var ms=localStorage.getItem('campusMonitores'); if(ms) monRaw=JSON.parse(ms); } catch(e) {}
+        var monCode = monRaw&&monRaw.asignaciones&&monRaw.asignaciones[semana] ? monRaw.asignaciones[semana][gi]||'' : '';
+        var code = monCode || autoCode;
+        if(attData[code]) Object.keys(attData[code]).forEach(function(d){ allDates.add(d); });
+      });
+
+      var dates = Array.from(allDates).sort();
+      if(!dates.length) return;
+
+      var header = ['Grupo','Nombre','Año nac.'].concat(dates.map(function(d) {
+        var parts = d.split('-');
+        return parts[2]+'/'+parts[1];
+      })).concat(['Total días','% Asistencia']);
+
+      var rows = [header];
+
+      grupos[semana].forEach(function(grupo, gi) {
+        var groupName = getGroupName(gi);
+        var autoCode = makeCode(semana, gi);
+        var monRaw = null;
+        try { var ms=localStorage.getItem('campusMonitores'); if(ms) monRaw=JSON.parse(ms); } catch(e) {}
+        var monCode = monRaw&&monRaw.asignaciones&&monRaw.asignaciones[semana] ? monRaw.asignaciones[semana][gi]||'' : '';
+        var code = monCode || autoCode;
+        var dayData = attData[code] || {};
+
+        grupo.forEach(function(k) {
+          var kidName = fullName(k);
+          var present = 0, total = 0;
+          var dayCells = dates.map(function(d) {
+            var dayAtt = dayData[d];
+            if(!dayAtt) return '—';
+            var status = dayAtt[kidName] || dayAtt[k.id] || '';
+            if(status==='present'||status==='P') { present++; total++; return '✅'; }
+            if(status==='absent'||status==='A') { total++; return '❌'; }
+            return '—';
+          });
+          var pct = total ? Math.round(present/total*100)+'%' : '—';
+          rows.push([groupName, kidName, k.anoNac||''].concat(dayCells).concat([present+'/'+total, pct]));
+        });
+        rows.push(new Array(header.length).fill(''));
+      });
+
+      var ws = XLSX.utils.aoa_to_sheet(rows);
+      ws['!cols'] = [{wch:14},{wch:28},{wch:8}].concat(dates.map(function(){return {wch:8};})).concat([{wch:10},{wch:12}]);
+      XLSX.utils.book_append_sheet(wb, ws, semana.replace('Semana ','S'));
+    });
+
+    XLSX.writeFile(wb, 'informe-asistencia-campus.xlsx');
+    showToast('📊 Informe generado ✅','success');
+  }).catch(function(e) {
+    showToast('❌ Error: '+e.message,'error');
+  });
 }
 
 // ══════════════════════════════════════════════
@@ -4462,6 +4645,169 @@ function renderStats() {
   el.appendChild(card('📐 Tamaño de grupos', sizeHtml));
 }
 
+
+// ══════════════════════════════════════════════
+// EXPORTAR TALLAS DE CAMISETA
+// ══════════════════════════════════════════════
+function exportTallas() {
+  if(!Object.keys(grupos).length) { showToast('⚠️ No hay grupos cargados','error'); return; }
+
+  var wb = XLSX.utils.book_new();
+  var semanas = Object.keys(grupos);
+
+  semanas.forEach(function(semana) {
+    var rows = [['Grupo','Nombre completo','Año nac.','Talla','Comedor','Alergias']];
+    grupos[semana].forEach(function(grupo, gi) {
+      var groupName = getGroupName(gi);
+      grupo.forEach(function(k) {
+        rows.push([
+          groupName,
+          fullName(k),
+          k.anoNac||'',
+          k.talla||'—',
+          k.comedor?'Sí':'No',
+          k.alergias||''
+        ]);
+      });
+      rows.push(['','','','','','']); // blank row between groups
+    });
+
+    var ws = XLSX.utils.aoa_to_sheet(rows);
+    ws['!cols'] = [{wch:14},{wch:28},{wch:10},{wch:10},{wch:10},{wch:24}];
+
+    // Style header
+    var headerStyle = {fill:{fgColor:{rgb:'0A0E14'}},font:{bold:true,color:{rgb:'FFB800'}}};
+    ['A1','B1','C1','D1','E1','F1'].forEach(function(cell) {
+      if(ws[cell]) ws[cell].s = headerStyle;
+    });
+
+    XLSX.utils.book_append_sheet(wb, ws, semana.replace('Semana ','S'));
+  });
+
+  // Summary sheet: all kids unique, sorted by talla
+  var allKids = [];
+  var seen = new Set();
+  semanas.forEach(function(s) {
+    grupos[s].forEach(function(g) {
+      g.forEach(function(k) {
+        var uid = (k.nombre||'')+'_'+(k.apellidos||'');
+        if(!seen.has(uid)) {
+          seen.add(uid);
+          allKids.push(k);
+        }
+      });
+    });
+  });
+
+  // Count by talla
+  var tallaCounts = {};
+  allKids.forEach(function(k) {
+    var t = (k.talla||'Sin dato').toUpperCase().trim();
+    tallaCounts[t] = (tallaCounts[t]||0)+1;
+  });
+
+  var resumenRows = [['Talla','Cantidad']];
+  var order = ['2','4','6','8','10','12','14','XS','S','M','L','XL','XXL','SIN DATO'];
+  var sorted = Object.entries(tallaCounts).sort(function(a,b) {
+    var ia = order.indexOf(a[0]), ib = order.indexOf(b[0]);
+    if(ia<0) ia=99; if(ib<0) ib=99;
+    return ia-ib;
+  });
+  sorted.forEach(function(e) { resumenRows.push([e[0], e[1]]); });
+  resumenRows.push(['TOTAL', allKids.length]);
+
+  var wsRes = XLSX.utils.aoa_to_sheet(resumenRows);
+  wsRes['!cols'] = [{wch:12},{wch:12}];
+  XLSX.utils.book_append_sheet(wb, wsRes, 'Resumen tallas');
+
+  XLSX.writeFile(wb, 'tallas-camiseta.xlsx');
+  showToast('👕 Excel de tallas generado ✅','success');
+}
+
+// ══════════════════════════════════════════════
+// INFORME FINAL DE ASISTENCIA
+// ══════════════════════════════════════════════
+function exportInformeAsistencia() {
+  if(!window._fbDB) { showToast('⚠️ Necesitas Firebase conectado','error'); return; }
+  showToast('⏳ Generando informe...','success');
+
+  window._fbDB.collection('attendance').get().then(function(snap) {
+    // Build: kidCode -> {semana, dates: {date: status}}
+    var attData = {};
+    snap.forEach(function(doc) {
+      var parts = doc.id.split('_');
+      if(parts.length < 3) return;
+      var code = parts[1];
+      var date = parts[2];
+      try {
+        var data = JSON.parse(doc.data().data||'{}');
+        if(!attData[code]) attData[code] = {};
+        attData[code][date] = data;
+      } catch(e) {}
+    });
+
+    var wb = XLSX.utils.book_new();
+    var semanas = Object.keys(grupos);
+
+    semanas.forEach(function(semana) {
+      // Get all dates recorded for this semana's groups
+      var allDates = new Set();
+      grupos[semana].forEach(function(grupo, gi) {
+        var autoCode = makeCode(semana, gi);
+        var monRaw = null;
+        try { var ms=localStorage.getItem('campusMonitores'); if(ms) monRaw=JSON.parse(ms); } catch(e) {}
+        var monCode = monRaw&&monRaw.asignaciones&&monRaw.asignaciones[semana] ? monRaw.asignaciones[semana][gi]||'' : '';
+        var code = monCode || autoCode;
+        if(attData[code]) Object.keys(attData[code]).forEach(function(d){ allDates.add(d); });
+      });
+
+      var dates = Array.from(allDates).sort();
+      if(!dates.length) return;
+
+      var header = ['Grupo','Nombre','Año nac.'].concat(dates.map(function(d) {
+        var parts = d.split('-');
+        return parts[2]+'/'+parts[1];
+      })).concat(['Total días','% Asistencia']);
+
+      var rows = [header];
+
+      grupos[semana].forEach(function(grupo, gi) {
+        var groupName = getGroupName(gi);
+        var autoCode = makeCode(semana, gi);
+        var monRaw = null;
+        try { var ms=localStorage.getItem('campusMonitores'); if(ms) monRaw=JSON.parse(ms); } catch(e) {}
+        var monCode = monRaw&&monRaw.asignaciones&&monRaw.asignaciones[semana] ? monRaw.asignaciones[semana][gi]||'' : '';
+        var code = monCode || autoCode;
+        var dayData = attData[code] || {};
+
+        grupo.forEach(function(k) {
+          var kidName = fullName(k);
+          var present = 0, total = 0;
+          var dayCells = dates.map(function(d) {
+            var dayAtt = dayData[d];
+            if(!dayAtt) return '—';
+            var status = dayAtt[kidName] || dayAtt[k.id] || '';
+            if(status==='present'||status==='P') { present++; total++; return '✅'; }
+            if(status==='absent'||status==='A') { total++; return '❌'; }
+            return '—';
+          });
+          var pct = total ? Math.round(present/total*100)+'%' : '—';
+          rows.push([groupName, kidName, k.anoNac||''].concat(dayCells).concat([present+'/'+total, pct]));
+        });
+        rows.push(new Array(header.length).fill(''));
+      });
+
+      var ws = XLSX.utils.aoa_to_sheet(rows);
+      ws['!cols'] = [{wch:14},{wch:28},{wch:8}].concat(dates.map(function(){return {wch:8};})).concat([{wch:10},{wch:12}]);
+      XLSX.utils.book_append_sheet(wb, ws, semana.replace('Semana ','S'));
+    });
+
+    XLSX.writeFile(wb, 'informe-asistencia-campus.xlsx');
+    showToast('📊 Informe generado ✅','success');
+  }).catch(function(e) {
+    showToast('❌ Error: '+e.message,'error');
+  });
+}
 
 // ══════════════════════════════════════════════
 // INCIDENCIAS DE PADRES
