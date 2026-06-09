@@ -221,8 +221,10 @@ pre.export-text{background:#F6F8FA;border-radius:var(--radius-sm);padding:14px;f
 @media(min-width:641px){
   #actionBtns{display:flex !important;flex-wrap:wrap}
   #actionBtns .btn{font-size:.85rem;padding:8px 14px}
-  .turno-tabs{display:flex !important;flex-wrap:wrap;overflow:visible}
-  .steps{display:flex !important;flex-wrap:wrap;overflow:visible}
+  .turno-tabs{display:flex !important;flex-wrap:wrap !important;gap:6px !important}
+  .steps{display:flex !important;flex-wrap:wrap !important}
+  .turno-panel{display:block}
+  .grupos-grid{display:grid !important;grid-template-columns:repeat(auto-fill,minmax(270px,1fr)) !important;align-items:start}
 }
 
 /* MOBILE BOTTOM NAV */
