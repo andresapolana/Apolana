@@ -379,14 +379,14 @@ pre.export-text{background:#F6F8FA;border-radius:var(--radius-sm);padding:14px;f
     <button class="btn btn-outline btn-sm" onclick="document.getElementById('savedGroupsBanner').style.display='none'">Ignorar</button>
   </div>
 
-  <div id="stepsSearchWrap" style="display:flex;align-items:center;gap:10px;flex-wrap:nowrap;margin-bottom:20px;overflow:hidden">
+  <div id="stepsSearchWrap" style="display:flex;align-items:center;gap:10px;flex-wrap:nowrap;margin-bottom:20px;overflow:visible">
     <div class="steps" style="flex:1;min-width:0">
       <button class="step-btn active" onclick="goStep(1)" id="step1btn"><div class="step-num">1</div>Datos</button>
       <button class="step-btn" onclick="goStep(2)" id="step2btn"><div class="step-num">2</div>Columnas</button>
       <button class="step-btn" onclick="goStep(3)" id="step3btn"><div class="step-num">3</div>Ajustes</button>
       <button class="step-btn" onclick="goStep(4)" id="step4btn"><div class="step-num">4</div>Grupos</button>
     </div>
-    <div style="position:relative;min-width:220px;max-width:320px;flex:1">
+    <div style="position:relative;min-width:220px;max-width:320px;flex:1;z-index:9001">
       <input type="text" id="kidSearchInput" placeholder="🔍 Buscar niño..." 
         oninput="searchKidInGroups(this.value)"
         style="width:100%;padding:9px 14px;border:1.5px solid var(--border);border-radius:20px;font-family:'Instrument Sans',sans-serif;font-size:.82rem;outline:none;transition:border-color .2s;background:#fff"
@@ -527,7 +527,7 @@ pre.export-text{background:#F6F8FA;border-radius:var(--radius-sm);padding:14px;f
   <!-- PASO 4: GRUPOS + EDICIÓN -->
   <div class="panel" id="panel4">
     <!-- ENLACES PARA COMPARTIR -->
-    <div style="background:#0A0E14;border-radius:var(--radius);padding:14px 16px;margin-bottom:16px">
+    <div style="background:#0A0E14;border-radius:var(--radius);padding:14px 16px;margin-bottom:16px;position:relative;z-index:1">
       <div style="font-family:'Syne',sans-serif;font-weight:700;font-size:.85rem;color:#FFB800;margin-bottom:10px">🔗 Enlaces para compartir</div>
       <div style="display:flex;flex-direction:column;gap:8px">
         <div style="background:rgba(255,255,255,.06);border-radius:8px;padding:9px 12px">
