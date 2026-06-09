@@ -84,8 +84,8 @@ input:focus,select:focus{outline:none;border-color:var(--sky)}
 .ttab.active{background:var(--dark);color:#fff;border-color:var(--dark)}
 
 /* GRUPOS GRID */
-.grupos-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(270px,1fr));gap:14px;align-items:start}
-.grupo-card{background:#fff;border-radius:var(--radius);border:1px solid var(--border);overflow:hidden;box-shadow:var(--shadow);transition:box-shadow .2s}
+.grupos-grid{columns:3;column-gap:14px;display:block}
+.grupo-card{background:#fff;border-radius:var(--radius);border:1px solid var(--border);overflow:hidden;box-shadow:var(--shadow);transition:box-shadow .2s;break-inside:avoid;margin-bottom:14px}
 .grupo-card:hover{box-shadow:0 6px 24px rgba(0,0,0,.1)}
 .grupo-card.drag-over{border:2px dashed var(--sky);background:#EEF4FF}
 .grupo-header{padding:13px 16px;display:flex;justify-content:space-between;align-items:center}
@@ -224,7 +224,7 @@ pre.export-text{background:#F6F8FA;border-radius:var(--radius-sm);padding:14px;f
   .turno-tabs{display:flex !important;flex-wrap:wrap !important;gap:6px !important}
   .steps{display:flex !important;flex-wrap:wrap !important}
   .turno-panel{display:block}
-  .grupos-grid{display:grid !important;grid-template-columns:repeat(auto-fill,minmax(270px,1fr)) !important;align-items:start}
+  .grupos-grid{columns:3 !important;display:block !important}
 }
 
 /* MOBILE BOTTOM NAV */
@@ -262,7 +262,7 @@ pre.export-text{background:#F6F8FA;border-radius:var(--radius-sm);padding:14px;f
 
 @media(max-width:640px){
   .col-mapper{grid-template-columns:1fr}
-  .grupos-grid{grid-template-columns:1fr}
+  .grupos-grid{columns:1}
   .app-logo span{display:none}
   .comedor-table{font-size:.75rem}
   .comedor-table th,.comedor-table td{padding:8px 10px}
@@ -1325,6 +1325,15 @@ function renderResults(){
   </div>
   <div id="exportArea" style="display:none;margin-bottom:14px"><pre class="export-text" id="exportText"></pre></div>
 
+  <div id="colorFilters" style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:12px">
+    <button onclick="filterByColor(null,this)" class="btn btn-sm active" style="background:#0A0E14;color:#FFB800;border:1px solid #FFB800">Todos</button>
+    <button onclick="filterByColor('Rojo',this)" class="btn btn-sm" style="background:#FFEBEE;color:#C62828;border:1px solid #EF9A9A">🔴 Rojo</button>
+    <button onclick="filterByColor('Verde',this)" class="btn btn-sm" style="background:#E8F5E9;color:#2E7D32;border:1px solid #A5D6A7">🟢 Verde</button>
+    <button onclick="filterByColor('Azul',this)" class="btn btn-sm" style="background:#E3F2FD;color:#1565C0;border:1px solid #90CAF9">🔵 Azul</button>
+    <button onclick="filterByColor('Amarillo',this)" class="btn btn-sm" style="background:#FFFDE7;color:#F57F17;border:1px solid #FFF176">🟡 Amarillo</button>
+    <button onclick="filterByColor('Naranja',this)" class="btn btn-sm" style="background:#FFF3E0;color:#E65100;border:1px solid #FFCC80">🟠 Naranja</button>
+    <button onclick="filterByColor('Morado',this)" class="btn btn-sm" style="background:#F3E5F5;color:#6A1B9A;border:1px solid #CE93D8">🟣 Morado</button>
+  </div>
   <div class="turno-tabs" id="turnoTabs">${turnoNames.map((t,i)=>{
     const nKids = grupos[t].reduce((a,g)=>a+g.length,0);
     const nCom = grupos[t].reduce((a,g)=>a+g.filter(k=>k.comedor).length,0);
@@ -1391,6 +1400,27 @@ function renderNinoRow(kid,color,turno,gi){
 }
 
 let dragKidId=null,dragFromTurno=null,dragFromGi=null;
+
+function filterByColor(color, btn) {
+  // Update button styles
+  document.querySelectorAll('#colorFilters .btn').forEach(function(b) {
+    b.style.opacity = '0.5';
+    b.style.fontWeight = '400';
+  });
+  if(btn) { btn.style.opacity = '1'; btn.style.fontWeight = '700'; }
+
+  // Show/hide grupo cards
+  document.querySelectorAll('.grupo-card').forEach(function(card) {
+    const title = card.querySelector('.grupo-header span, .grupo-name');
+    const headerEl = card.querySelector('[class*="grupo-header"]') || card.firstElementChild;
+    const text = headerEl ? headerEl.textContent : '';
+    if(!color || text.toLowerCase().includes(color.toLowerCase())) {
+      card.style.display = '';
+    } else {
+      card.style.display = 'none';
+    }
+  });
+}
 
 function removeKidFromGroup(btnOrId, turno, gi) {
   if(!editMode) return;
