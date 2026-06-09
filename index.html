@@ -1395,6 +1395,7 @@ function renderNinoRow(kid,color,turno,gi){
     ${fHere.length?'<span class="tag tag-friend">👫</span>':''}
     ${fOut.length?`<span class="tag tag-warn" title="Pedía: ${fOut.join(', ')}">!</span>`:''}
     <button onclick="openObsModal('${encodeURIComponent(name)}','${esc(turno)}')" style="background:none;border:1px solid #ddd;border-radius:6px;padding:3px 7px;cursor:pointer;font-size:.72rem;color:#888;margin-left:2px" title="Editar observaciones">✏️</button>
+    <button class="edit-only-btn" onclick="renameKid(this)" data-id="${kid.id}" data-turno="${esc(turno)}" data-gi="${gi}" style="display:none;background:none;border:1px solid #c8e6c9;border-radius:6px;padding:3px 7px;cursor:pointer;font-size:.72rem;color:#2e7d32;margin-left:2px" title="Cambiar nombre">✏️ Nombre</button>
     <button class="edit-only-btn" onclick="removeKidFromGroup(this)" data-id="${kid.id}" data-turno="${esc(turno)}" data-gi="${gi}" style="display:none;background:none;border:1px solid #ffb3b3;border-radius:6px;padding:3px 7px;cursor:pointer;font-size:.72rem;color:#cc0000;margin-left:2px" title="Eliminar de este grupo">🗑️</button>
   </div>`;
 }
@@ -1422,11 +1423,55 @@ function filterByColor(color, btn) {
   });
 }
 
+function renameKid(btn) {
+  var kidId = btn.dataset.id;
+  var turno = btn.dataset.turno;
+  var gi = parseInt(btn.dataset.gi);
+  try { turno = decodeURIComponent(turno); } catch(e) {}
+  if(!grupos[turno] || !grupos[turno][gi]) return;
+
+  var kid = grupos[turno][gi].find(function(k){ return String(k.id)===String(kidId); });
+  if(!kid) return;
+
+  var currentName = (kid.nombre||'') + (kid.apellidos ? ' '+kid.apellidos : '');
+  var newName = prompt('Nuevo nombre completo:', currentName);
+  if(!newName || !newName.trim() || newName.trim()===currentName) return;
+
+  var parts = newName.trim().split(' ');
+  var newNombre = parts[0] || '';
+  var newApellidos = parts.slice(1).join(' ') || '';
+
+  // Update in ALL semanas and groups (same kid might be in multiple weeks)
+  var updated = 0;
+  Object.keys(grupos).forEach(function(s) {
+    grupos[s].forEach(function(g) {
+      g.forEach(function(k) {
+        if(String(k.id)===String(kidId)) {
+          k.nombre = newNombre;
+          k.apellidos = newApellidos;
+          updated++;
+        }
+      });
+    });
+  });
+
+  saveToStorage();
+  window._unsavedChanges = true;
+  updateSaveReminder();
+  refreshGrid(turno);
+  setupDragDrop();
+  showToast('✅ Nombre actualizado en ' + updated + ' grupo(s)', 'success');
+  logChange('edit', currentName + ' → ' + newName.trim());
+}
+
 function removeKidFromGroup(btnOrId, turno, gi) {
   if(!editMode) return;
   var kidId = typeof btnOrId === 'object' ? btnOrId.dataset.id : btnOrId;
   if(typeof btnOrId === 'object') { turno = btnOrId.dataset.turno; gi = parseInt(btnOrId.dataset.gi); }
-  if(!grupos[turno] || !grupos[turno][gi]) return;
+  gi = parseInt(gi);
+  // Decode turno in case it was URL-encoded
+  try { turno = decodeURIComponent(turno); } catch(e) {}
+  if(!grupos[turno] || !grupos[turno][gi]) { showToast('⚠️ Grupo no encontrado: ' + turno + '[' + gi + ']','error'); return; }
   if(!confirm('¿Eliminar este niño/a de ' + getGroupName(gi) + ' (' + turno + ')?')) return;
 
   // Find FIRST occurrence only in this specific group
