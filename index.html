@@ -3025,48 +3025,155 @@ async function loadGruposExcel(file) {
 
   try {
     const data = await readFileAsArrayBuffer(file);
-    const wb = XLSX.read(data, {type:'array'});
+    const wb = XLSX.read(data, {type:'array', cellDates:true});
 
-    // Check for TODOS sheet
-    if(!wb.SheetNames.includes('TODOS')) {
-      status.innerHTML = '<div class="alert" style="background:#FFE0E0;border:1px solid #FFC0C0;border-radius:8px;padding:10px 14px;font-size:.82rem;color:#C00">❌ No se encontró la hoja "TODOS". Asegúrate de subir el Excel correcto.</div>';
-      return;
+    // Detect format: new format has S1/S2/S3/S4/S5 sheets
+    const semanSheets = wb.SheetNames.filter(s => /^S[1-5]$/i.test(s.trim()));
+    
+    if(semanSheets.length > 0) {
+      // NEW FORMAT: hojas S1, S2, S3, S4, S5
+      await loadGruposExcelNuevo(wb, semanSheets, status);
+    } else if(wb.SheetNames.includes('TODOS')) {
+      // OLD FORMAT: hoja TODOS
+      await loadGruposExcelAntiguo(wb, status);
+    } else {
+      status.innerHTML = '<div class="alert" style="background:#FFE0E0;border:1px solid #FFC0C0;border-radius:8px;padding:10px 14px;font-size:.82rem;color:#C00">❌ Formato no reconocido. El archivo debe tener hojas S1-S5 o una hoja TODOS.</div>';
     }
-
-    // Parse TODOS for group structure
-    const todosData = XLSX.utils.sheet_to_json(wb.Sheets['TODOS'], {header:1, defval:''});
-    const groups = parseGruposTodos(todosData);
-
-    // Parse detail sheets for full kid data
-    const detailSheets = wb.SheetNames.filter(s => !['TODOS','PLANTILLA'].includes(s));
-    const allKidsData = {};
-    for(const sheet of detailSheets) {
-      const rows = XLSX.utils.sheet_to_json(wb.Sheets[sheet], {header:1, defval:''});
-      parseDetailSheet(rows, allKidsData);
-    }
-
-    // Cross-reference
-    const result = crossReference(groups, allKidsData);
-    _gruposExcelParsed = result;
-
-    const total = Object.values(result).reduce((a,g)=>a+g.length,0);
-    const comedor = Object.values(result).reduce((a,g)=>a+g.filter(k=>k.comedor).length,0);
-    const alergias = Object.values(result).reduce((a,g)=>a+g.filter(k=>k.alergias).length,0);
-
-    status.innerHTML = `<div class="alert alert-success">
-      ✅ Leído correctamente: <strong>${Object.keys(result).length} grupos</strong>, ${total} niños, ${comedor} comedor, ${alergias} con alergias.<br>
-      <span style="font-size:.78rem;color:#555">Grupos: ${Object.keys(result).join(', ')}</span>
-    </div>`;
-    document.getElementById('gruposImportSemana').style.display = 'block';
-    // Auto-set semana from current tab
-    const semanaAuto = CAMPUS_WEEKS[_currentSemanTab].label;
-    document.getElementById('gruposImportSemanaSelect').value = semanaAuto;
-    document.getElementById('semana-btn-label').textContent = semanaAuto;
-
   } catch(e) {
-    status.innerHTML = `<div class="alert" style="background:#FFE0E0;border:1px solid #FFC0C0;border-radius:8px;padding:10px 14px;font-size:.82rem;color:#C00">❌ Error leyendo el archivo: ${e.message}</div>`;
+    status.innerHTML = `<div class="alert" style="background:#FFE0E0;border:1px solid #FFC0C0;border-radius:8px;padding:10px 14px;font-size:.82rem;color:#C00">❌ Error: ${e.message}</div>`;
     console.error(e);
   }
+}
+
+async function loadGruposExcelNuevo(wb, semanSheets, status) {
+  // Parse each S1-S5 sheet
+  const allSemanas = {};
+  var totalKids = 0, totalGroups = 0;
+
+  semanSheets.forEach(function(sheetName) {
+    const semanaNum = sheetName.trim().toUpperCase().replace('S','');
+    const semanaLabel = 'Semana ' + semanaNum;
+    const rows = XLSX.utils.sheet_to_json(wb.Sheets[sheetName], {header:1, defval:''});
+    
+    const groups = {};
+    
+    // Find all group header rows
+    for(var row = 0; row < rows.length; row++) {
+      const r = rows[row];
+      // Check col 0 for group name (e.g. "ROJO 1", "AZUL 2")
+      for(var col = 0; col < r.length; col += 5) {
+        const val = String(r[col]||'').trim().toUpperCase();
+        if(!val || val === 'NAN') continue;
+        const isGroupHeader = ['ROJO','AZUL','VERDE','AMARILLO','NARANJA','MORADO'].some(c => val.includes(c));
+        if(!isGroupHeader) continue;
+        if(val.match(/^(ROJO|AZUL|VERDE|AMARILLO|NARANJA|MORADO)$/) && !val.match(/\d/)) continue; // skip color-only headers
+        
+        const groupName = val.split(' ').map(w => w.charAt(0)+w.slice(1).toLowerCase()).join(' ');
+        if(!groups[groupName]) groups[groupName] = [];
+        
+        // Read kids below
+        for(var kr = row+1; kr < rows.length; kr++) {
+          const krow = rows[kr];
+          // Stop if hit another group header
+          const firstVal = String(krow[col]||'').trim().toUpperCase();
+          const isNextGroup = ['ROJO','AZUL','VERDE','AMARILLO','NARANJA','MORADO'].some(c => firstVal.includes(c)) && firstVal !== '';
+          if(isNextGroup) break;
+          
+          const nombre = String(krow[col+1]||'').trim();
+          const apellidos = String(krow[col+2]||'').trim();
+          if(!nombre || nombre === 'NAN' || nombre === '') continue;
+          
+          // Parse year
+          var anoNac = null;
+          const anoRaw = krow[col+3];
+          if(anoRaw) {
+            if(anoRaw instanceof Date) {
+              anoNac = anoRaw.getFullYear();
+            } else if(typeof anoRaw === 'number' && anoRaw > 1990 && anoRaw < 2030) {
+              anoNac = Math.round(anoRaw);
+            } else if(typeof anoRaw === 'string' && anoRaw.match(/\d{4}/)) {
+              anoNac = parseInt(anoRaw.match(/\d{4}/)[0]);
+            }
+          }
+          
+          const ts = Date.now() + Math.random();
+          groups[groupName].push({
+            id: String(ts),
+            nombre: nombre,
+            apellidos: apellidos,
+            anoNac: anoNac,
+            edad: anoNac ? (2025 - anoNac) : null,
+            comedor: false,
+            alergias: '',
+            obs: '',
+            semanas: [semanaLabel]
+          });
+        }
+      }
+    }
+    
+    // Filter out empty groups
+    const filtered = {};
+    Object.keys(groups).forEach(function(g) {
+      if(groups[g].length > 0) filtered[g] = groups[g];
+    });
+    
+    allSemanas[semanaLabel] = filtered;
+    totalGroups += Object.keys(filtered).length;
+    totalKids += Object.values(filtered).reduce(function(a,g){return a+g.length;}, 0);
+  });
+
+  // Check if existing grupos in Firebase — warn but allow
+  const existingGrupos = Object.keys(grupos).length > 0;
+  if(existingGrupos) {
+    if(!confirm('⚠️ Ya hay grupos cargados. ¿Quieres REEMPLAZARLOS con los del Excel?\n\nEsto borrará los grupos actuales y los sustituirá por los del Excel.\n\nPulsa Cancelar para no hacer nada.')) {
+      status.innerHTML = '<div class="alert alert-info">ℹ️ Importación cancelada. Los grupos actuales no se han modificado.</div>';
+      return;
+    }
+  }
+
+  // Load into grupos
+  Object.keys(allSemanas).forEach(function(semana) {
+    grupos[semana] = Object.values(allSemanas[semana]);
+  });
+
+  saveToStorage();
+  window._saveGruposFirebase(grupos);
+  window._unsavedChanges = false;
+  updateSaveReminder();
+
+  var semNames = Object.keys(allSemanas).join(', ');
+  status.innerHTML = `<div class="alert alert-success">
+    ✅ Importado correctamente: <strong>${totalGroups} grupos</strong>, <strong>${totalKids} niños</strong> en ${semanSheets.length} semanas.<br>
+    <span style="font-size:.78rem;color:#555">${semNames}</span><br>
+    <strong style="color:#00C46A">Los grupos se han guardado en Firebase automáticamente.</strong>
+  </div>`;
+  
+  logChange('generate', 'Grupos importados desde Excel — ' + totalKids + ' niños en ' + totalGroups + ' grupos');
+  showToast('✅ ' + totalKids + ' niños importados en ' + totalGroups + ' grupos', 'success');
+  
+  // Navigate to grupos view
+  setTimeout(function(){ goStep(4); }, 800);
+}
+
+async function loadGruposExcelAntiguo(wb, status) {
+  // Keep old logic for backwards compat
+  const todosData = XLSX.utils.sheet_to_json(wb.Sheets['TODOS'], {header:1, defval:''});
+  const groups = parseGruposTodos(todosData);
+  const detailSheets = wb.SheetNames.filter(s => !['TODOS','PLANTILLA'].includes(s));
+  const allKidsData = {};
+  for(const sheet of detailSheets) {
+    const rows = XLSX.utils.sheet_to_json(wb.Sheets[sheet], {header:1, defval:''});
+    parseDetailSheet(rows, allKidsData);
+  }
+  const result = crossReference(groups, allKidsData);
+  _gruposExcelParsed = result;
+  const total = Object.values(result).reduce((a,g)=>a+g.length,0);
+  status.innerHTML = `<div class="alert alert-success">✅ Leído (formato antiguo): <strong>${Object.keys(result).length} grupos</strong>, ${total} niños.</div>`;
+  document.getElementById('gruposImportSemana').style.display = 'block';
+  const semanaAuto = CAMPUS_WEEKS[_currentSemanTab].label;
+  document.getElementById('gruposImportSemanaSelect').value = semanaAuto;
+  document.getElementById('semana-btn-label').textContent = semanaAuto;
 }
 
 function readFileAsArrayBuffer(file) {
