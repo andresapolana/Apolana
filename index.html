@@ -6075,16 +6075,13 @@ function loadGlobalAttendance() {
   window._fbDB.collection('attendance').get().then(function(snap) {
     // Build attendance map: code -> kidName -> {status, arrived, picked, obs}
     var attMap = {};
-    console.log('[Att] docs:', snap.size, 'date:', dateStr);
     snap.forEach(function(doc) {
-      console.log('[Att] doc:', doc.id);
       if(doc.id.endsWith('_'+dateStr)) {
         var code = doc.id.replace('att_','').replace('_'+dateStr,'');
-        console.log('[Att] matched code:', code);
         try {
           var raw = JSON.parse(doc.data().data||'{}');
           attMap[code] = raw;
-        } catch(e) { console.error('parse error', e); }
+        } catch(e) {}
       }
     });
 
