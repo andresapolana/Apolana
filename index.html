@@ -164,6 +164,10 @@ input:focus,select:focus{outline:none;border-color:var(--sky)}
 .attend-item{display:flex;align-items:center;gap:12px;background:#fff;border-radius:10px;border:2px solid var(--border);padding:11px 14px;cursor:pointer;transition:all .18s;user-select:none}
 .attend-item.present{border-color:var(--grass);background:#EDFBF3}
 .attend-item.absent{border-color:var(--coral);background:#FFF0F0}
+.attend-item.arrived{border-color:#3B82F6;background:#EFF6FF}
+.attend-item.picked{border-color:#8B5CF6;background:#F5F3FF}
+.btn-obs{background:none;border:1px solid #ddd;border-radius:6px;padding:3px 7px;cursor:pointer;font-size:.7rem;color:#888;margin-left:4px}
+.btn-obs.has-obs{border-color:#F59E0B;color:#D97706;background:#FFFBEB}
 .attend-avatar{width:36px;height:36px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:.78rem;font-weight:700;color:#fff;flex-shrink:0}
 .attend-name{flex:1;font-weight:600;font-size:.92rem}
 .attend-age{font-size:.74rem;color:#aaa}
@@ -1314,6 +1318,10 @@ function renderResults(){
     <button class="btn btn-outline" onclick="editAviso()">📢 Aviso del día</button>
     <button class="btn btn-outline" onclick="exportGroupsPDF()">📄 PDF grupos</button>
     <button class="btn btn-outline" onclick="exportTallas()">👕 Tallas</button>
+    <label class="btn btn-outline" style="cursor:pointer;margin:0">
+      📊 Enriquecer datos
+      <input type="file" accept=".xlsx,.xls" onchange="enrichKidsData(this)" style="display:none">
+    </label>
     <button class="btn btn-outline" onclick="exportInformeAsistencia()">📊 Informe final</button>
     <button class="btn btn-outline" onclick="backupGrupos('backup-campus')">💾 Backup</button>
     <button class="btn btn-success" onclick="saveGruposManual()" id="saveFirebaseBtn">🔥 Firebase</button>
@@ -1815,29 +1823,133 @@ async function renderAttendList(){
   }
 
   const list=document.getElementById('attendList');list.innerHTML='';
-  monitorGroup.kids.forEach(kid=>{
+  monitorGroup.kids.forEach(function(kid) {
     const name=fullName(kid);
-    const status=saved[name]||saved[kid.nombre]||'pending';
+    const kidData=saved[name]||saved[kid.nombre]||{};
+    // Support both old format (string) and new format (object)
+    const status = typeof kidData === 'string' ? kidData : (kidData.status||'pending');
+    const arrived = typeof kidData === 'object' ? !!kidData.arrived : status==='present';
+    const picked = typeof kidData === 'object' ? !!kidData.picked : false;
+    const obs = typeof kidData === 'object' ? (kidData.obs||'') : '';
+
     const div=document.createElement('div');
-    div.className='attend-item'+(status==='present'?' present':status==='absent'?' absent':'');
-    div.dataset.nombre=name;div.dataset.status=status;
-    const initials=name.split(' ').map(w=>w[0]).join('').substring(0,2).toUpperCase();
-    const icon=status==='present'?'✅':status==='absent'?'❌':'⬜';
+    const stateClass = status==='absent' ? ' absent' : (arrived||status==='present') ? ' arrived' : '';
+    div.className='attend-item'+stateClass;
+    div.dataset.nombre=name;
+    div.dataset.status=status;
+    div.dataset.arrived=arrived?'1':'0';
+    div.dataset.picked=picked?'1':'0';
+    div.dataset.obs=obs;
+
+    const initials=name.split(' ').map(function(w){return w[0];}).join('').substring(0,2).toUpperCase();
     const info=[kid.edad?kid.edad+' años':null,kid.anoNac?'n.'+kid.anoNac:null].filter(Boolean).join(' · ');
-    div.innerHTML=`
-      <div class="attend-avatar" style="background:${color}">${initials}</div>
-      <div style="flex:1">
-        <div class="attend-name">${name}</div>
-        <div style="display:flex;gap:6px;margin-top:3px;flex-wrap:wrap">
-          ${info?`<span class="attend-age">${info}</span>`:''}
-          ${kid.comedor?'<span class="tag tag-comedor" style="font-size:.65rem">🍽️ Comedor</span>':''}
-          ${kid.alergias?`<span class="attend-alergia">⚠️ ${kid.alergias}</span>`:''}
-          ${kid.talla?`<span class="tag" style="background:#EEF2FF;color:#3730A3;border:1px solid #C7D2FE;border-radius:5px;padding:1px 6px;font-size:.65rem">👕 ${kid.talla}</span>`:''}
-          ${kid.otros?`<span class="attend-alergia" style="background:#F3EFF8;color:#6B3FA0;border-color:#D8C8F0">📝 ${kid.otros}</span>`:''}
-        </div>
-      </div>
-      <div class="attend-status">${icon}</div>`;
-    div.onclick=()=>toggleAttend(div);
+
+    const arrivedBtn = document.createElement('button');
+    arrivedBtn.style.cssText = 'background:'+(arrived?'#3B82F6':'none')+';border:1px solid '+(arrived?'#3B82F6':'#ddd')+';color:'+(arrived?'#fff':'#aaa')+';border-radius:7px;padding:4px 9px;cursor:pointer;font-size:.75rem;font-weight:600;white-space:nowrap';
+    arrivedBtn.textContent = arrived ? '✅ Llegó' : '☐ Llegó';
+    arrivedBtn.title = 'Marcar llegada';
+
+    const pickedBtn = document.createElement('button');
+    pickedBtn.style.cssText = 'background:'+(picked?'#8B5CF6':'none')+';border:1px solid '+(picked?'#8B5CF6':'#ddd')+';color:'+(picked?'#fff':'#aaa')+';border-radius:7px;padding:4px 9px;cursor:pointer;font-size:.75rem;font-weight:600;white-space:nowrap';
+    pickedBtn.textContent = picked ? '🏠 Recogido' : '☐ Recogido';
+    pickedBtn.title = 'Marcar recogida';
+
+    const absBtn = document.createElement('button');
+    absBtn.style.cssText = 'background:'+(status==='absent'?'#EF4444':'none')+';border:1px solid '+(status==='absent'?'#EF4444':'#ddd')+';color:'+(status==='absent'?'#fff':'#aaa')+';border-radius:7px;padding:4px 9px;cursor:pointer;font-size:.75rem;font-weight:600;white-space:nowrap';
+    absBtn.textContent = status==='absent' ? '❌ Ausente' : '☐ Ausente';
+    absBtn.title = 'Marcar ausencia';
+
+    const obsBtn = document.createElement('button');
+    obsBtn.className = 'btn-obs' + (obs ? ' has-obs' : '');
+    obsBtn.textContent = obs ? '📝 '+obs.substring(0,20)+(obs.length>20?'...':'') : '+ Nota';
+    obsBtn.title = obs || 'Añadir observación';
+
+    const avatar = document.createElement('div');
+    avatar.className = 'attend-avatar';
+    avatar.style.background = color;
+    avatar.textContent = initials;
+
+    const nameDiv = document.createElement('div');
+    nameDiv.style.flex = '1';
+    nameDiv.style.minWidth = '0';
+
+    const nameEl = document.createElement('div');
+    nameEl.className = 'attend-name';
+    nameEl.textContent = name;
+
+    const tagsEl = document.createElement('div');
+    tagsEl.style.cssText = 'display:flex;gap:5px;margin-top:3px;flex-wrap:wrap;align-items:center';
+    if(info) tagsEl.innerHTML += '<span class="attend-age">'+info+'</span>';
+    if(kid.comedor) tagsEl.innerHTML += '<span class="tag tag-comedor" style="font-size:.65rem">🍽️</span>';
+    if(kid.matinera) tagsEl.innerHTML += '<span class="tag" style="background:#FEF3C7;color:#92400E;border:1px solid #FDE68A;border-radius:5px;padding:1px 5px;font-size:.65rem">🌅</span>';
+    if(kid.alergias) tagsEl.innerHTML += '<span class="attend-alergia">⚠️ '+kid.alergias+'</span>';
+
+    const btnRow = document.createElement('div');
+    btnRow.style.cssText = 'display:flex;gap:5px;margin-top:6px;flex-wrap:wrap';
+    btnRow.appendChild(arrivedBtn);
+    btnRow.appendChild(pickedBtn);
+    btnRow.appendChild(absBtn);
+    btnRow.appendChild(obsBtn);
+
+    nameDiv.appendChild(nameEl);
+    nameDiv.appendChild(tagsEl);
+    nameDiv.appendChild(btnRow);
+    div.appendChild(avatar);
+    div.appendChild(nameDiv);
+
+    // Button handlers
+    arrivedBtn.addEventListener('click', function(e) {
+      e.stopPropagation();
+      var newArrived = div.dataset.arrived !== '1';
+      div.dataset.arrived = newArrived ? '1' : '0';
+      if(newArrived) { div.dataset.status = 'present'; div.classList.remove('absent'); div.classList.add('arrived'); }
+      arrivedBtn.style.background = newArrived ? '#3B82F6' : 'none';
+      arrivedBtn.style.borderColor = newArrived ? '#3B82F6' : '#ddd';
+      arrivedBtn.style.color = newArrived ? '#fff' : '#aaa';
+      arrivedBtn.textContent = newArrived ? '✅ Llegó' : '☐ Llegó';
+      updateCounts(); autoSaveAttend();
+    });
+
+    pickedBtn.addEventListener('click', function(e) {
+      e.stopPropagation();
+      var newPicked = div.dataset.picked !== '1';
+      div.dataset.picked = newPicked ? '1' : '0';
+      pickedBtn.style.background = newPicked ? '#8B5CF6' : 'none';
+      pickedBtn.style.borderColor = newPicked ? '#8B5CF6' : '#ddd';
+      pickedBtn.style.color = newPicked ? '#fff' : '#aaa';
+      pickedBtn.textContent = newPicked ? '🏠 Recogido' : '☐ Recogido';
+      updateCounts(); autoSaveAttend();
+    });
+
+    absBtn.addEventListener('click', function(e) {
+      e.stopPropagation();
+      var newAbs = div.dataset.status !== 'absent';
+      div.dataset.status = newAbs ? 'absent' : 'pending';
+      div.dataset.arrived = '0';
+      div.classList.toggle('absent', newAbs);
+      div.classList.toggle('arrived', false);
+      absBtn.style.background = newAbs ? '#EF4444' : 'none';
+      absBtn.style.borderColor = newAbs ? '#EF4444' : '#ddd';
+      absBtn.style.color = newAbs ? '#fff' : '#aaa';
+      absBtn.textContent = newAbs ? '❌ Ausente' : '☐ Ausente';
+      arrivedBtn.style.background = 'none'; arrivedBtn.style.borderColor = '#ddd'; arrivedBtn.style.color = '#aaa';
+      arrivedBtn.textContent = '☐ Llegó';
+      updateCounts(); autoSaveAttend();
+    });
+
+    obsBtn.addEventListener('click', function(e) {
+      e.stopPropagation();
+      var current = div.dataset.obs || '';
+      var newObs = prompt('Observación para ' + name + ':', current);
+      if(newObs === null) return;
+      newObs = newObs.trim();
+      div.dataset.obs = newObs;
+      obsBtn.className = 'btn-obs' + (newObs ? ' has-obs' : '');
+      obsBtn.textContent = newObs ? '📝 '+newObs.substring(0,20)+(newObs.length>20?'...':'') : '+ Nota';
+      obsBtn.title = newObs || 'Añadir observación';
+      autoSaveAttend();
+    });
+
     list.appendChild(div);
   });
   updateCounts();
@@ -1854,23 +1966,43 @@ function toggleAttend(el){
 
 function updateCounts(){
   const items=document.querySelectorAll('.attend-item');
-  let p=0,a=0;
-  items.forEach(el=>{if(el.dataset.status==='present')p++;else if(el.dataset.status==='absent')a++;});
-  document.getElementById('countPresent').textContent=p;
-  document.getElementById('countAbsent').textContent=a;
-  document.getElementById('countTotal').textContent=items.length;
+  let arrived=0,picked=0,absent=0;
+  items.forEach(function(el){
+    if(el.dataset.status==='absent') absent++;
+    else if(el.dataset.arrived==='1') arrived++;
+    if(el.dataset.picked==='1') picked++;
+  });
+  var pEl = document.getElementById('countPresent');
+  var aEl = document.getElementById('countAbsent');
+  var tEl = document.getElementById('countTotal');
+  if(pEl) pEl.textContent = arrived + (picked?' ('+picked+' recogidos)':'');
+  if(aEl) aEl.textContent = absent;
+  if(tEl) tEl.textContent = items.length;
 }
 
 function saveAttendance(){
   if(!monitorGroup) return;
   const dateStr=getDateStr(currentDateOffset);
-  const statuses={};
-  document.querySelectorAll('.attend-item').forEach(el=>{statuses[el.dataset.nombre]=el.dataset.status;});
-  saveAttendData(monitorGroup.code,dateStr,statuses);
+  const data={};
+  document.querySelectorAll('.attend-item').forEach(function(el){
+    var nombre = el.dataset.nombre;
+    if(!nombre) return;
+    var status = el.dataset.status || 'pending';
+    var arrived = el.dataset.arrived === '1';
+    var picked = el.dataset.picked === '1';
+    var obs = el.dataset.obs || '';
+    data[nombre] = {status:status, arrived:arrived, picked:picked, obs:obs};
+  });
+  saveAttendData(monitorGroup.code,dateStr,data);
   const msg=document.getElementById('savedMsg');
-  if(msg){msg.style.display='block';setTimeout(()=>msg.style.display='none',2000);}
+  if(msg){msg.style.display='block';setTimeout(function(){msg.style.display='none';},2000);}
   if(window._fbStatus==='connected') showToast('🔥 Lista guardada en Firebase ✅','success');
   else showToast('⚠️ Sin Firebase — guardado localmente','warn',3000);
+}
+
+function autoSaveAttend() {
+  if(window._autoSaveTimer) clearTimeout(window._autoSaveTimer);
+  window._autoSaveTimer = setTimeout(saveAttendance, 1500);
 }
 
 async function toggleHistory(){
@@ -2460,6 +2592,103 @@ function backupGrupos(filename) {
 }
 
 // ══════════════════════════════════════════════
+// ENRIQUECER DATOS DE NIÑOS
+// ══════════════════════════════════════════════
+function enrichKidsData(input) {
+  var file = input.files[0];
+  if(!file) return;
+  input.value = '';
+
+  var reader = new FileReader();
+  reader.onload = function(e) {
+    try {
+      var wb = XLSX.read(e.target.result, {type:'array', cellDates:true});
+      var ws = wb.Sheets[wb.SheetNames[0]];
+      var rows = XLSX.utils.sheet_to_json(ws, {defval:''});
+
+      if(!rows.length) { showToast('⚠️ El archivo está vacío','error'); return; }
+
+      // Build lookup map: "nombre apellidos" -> data
+      var lookup = {};
+      rows.forEach(function(row) {
+        var nombre = String(row['Nombre alumno/a:']||row['Nombre']||row['nombre']||'').trim().toLowerCase();
+        var apellidos = String(row['Apellidos alumno/a:']||row['Apellidos']||row['apellidos']||'').trim().toLowerCase();
+        if(!nombre) return;
+        var key = nombre + ' ' + apellidos;
+        lookup[key] = row;
+      });
+
+      // Match and enrich
+      var updated = 0, notFound = 0;
+      Object.keys(grupos).forEach(function(semana) {
+        grupos[semana].forEach(function(grupo) {
+          grupo.forEach(function(kid) {
+            var key = (kid.nombre||'').trim().toLowerCase() + ' ' + (kid.apellidos||'').trim().toLowerCase();
+            var data = lookup[key];
+            if(!data) {
+              // Try partial match (first name only)
+              var keyFirst = (kid.nombre||'').trim().toLowerCase();
+              data = lookup[Object.keys(lookup).find(function(k){ return k.startsWith(keyFirst+' '); })||''];
+            }
+            if(!data) { notFound++; return; }
+            updated++;
+
+            // Enrich fields
+            var sexo = String(data['Sexo']||'').trim();
+            if(sexo) kid.sexo = sexo;
+
+            var fecha = data['Fecha de nacimiento'];
+            if(fecha) {
+              var ano = null;
+              if(fecha instanceof Date) ano = fecha.getFullYear();
+              else { var m = String(fecha).match(/\d{4}/); if(m) ano = parseInt(m[0]); }
+              if(ano) { kid.anoNac = ano; kid.edad = 2025 - ano; }
+            }
+
+            var talla = String(data['Talla de camiseta']||'').trim();
+            if(talla && talla !== 'nan') kid.talla = talla;
+
+            var matRaw = String(data['Servicio de Matinera']||'').trim().toLowerCase();
+            kid.matinera = ['sí','si','yes','1'].includes(matRaw);
+
+            var alerRaw = String(data['Alergias o intolerancias']||'').trim();
+            var alerBad = ['nan','no','ninguna','ninguno','no tiene','no tiene alergias','ninguna conocida',''];
+            kid.alergias = alerBad.includes(alerRaw.toLowerCase()) ? '' : alerRaw;
+
+            var amigosRaw = String(data['Amigos/as en el campus']||'').trim();
+            var amBad = ['nan','no','ninguno',''];
+            kid.amigos = amBad.includes(amigosRaw.toLowerCase()) ? '' : amigosRaw;
+
+            var otrosRaw = String(data['Otros']||'').trim();
+            kid.otros = ['nan','','no'].includes(otrosRaw.toLowerCase()) ? '' : otrosRaw;
+
+            var comRaw = String(data['Servicio de Comedor']||'').trim().toLowerCase();
+            kid.comedor = ['sí','si','yes','1'].includes(comRaw);
+          });
+        });
+      });
+
+      saveToStorage();
+      window._saveGruposFirebase(grupos);
+      window._unsavedChanges = false;
+      updateSaveReminder();
+
+      showToast('✅ ' + updated + ' niños actualizados' + (notFound > 0 ? ' · ' + notFound + ' no encontrados' : ''), 'success');
+      logChange('edit', 'Datos enriquecidos desde Excel — ' + updated + ' niños actualizados');
+
+      // Refresh view
+      var activeTurno = document.querySelector('.ttab.active');
+      if(activeTurno) refreshGrid(activeTurno.textContent.split('\n')[0].trim());
+
+    } catch(err) {
+      showToast('❌ Error: ' + err.message, 'error');
+      console.error(err);
+    }
+  };
+  reader.readAsArrayBuffer(file);
+}
+
+// ══════════════════════════════════════════════
 // EXPORTAR TALLAS DE CAMISETA
 // ══════════════════════════════════════════════
 function exportTallas() {
@@ -3031,8 +3260,14 @@ async function loadGruposExcel(file) {
     const semanSheets = wb.SheetNames.filter(s => /^S[1-5]$/i.test(s.trim()));
     
     if(semanSheets.length > 0) {
-      // NEW FORMAT: hojas S1, S2, S3, S4, S5
-      await loadGruposExcelNuevo(wb, semanSheets, status);
+      // Check if it's Fichas format (has Nombre/Apellidos/Comedor columns)
+      const firstSheet = XLSX.utils.sheet_to_json(wb.Sheets[semanSheets[0]], {header:1, defval:''});
+      const hasFichasFormat = firstSheet.some(row => String(row[0]||'').toLowerCase().includes('nombre') || String(row[7]||'').toLowerCase().includes('comedor'));
+      if(hasFichasFormat) {
+        await loadFichasGrupos(wb, semanSheets, status);
+      } else {
+        await loadGruposExcelNuevo(wb, semanSheets, status);
+      }
     } else if(wb.SheetNames.includes('TODOS')) {
       // OLD FORMAT: hoja TODOS
       await loadGruposExcelAntiguo(wb, status);
@@ -3045,89 +3280,120 @@ async function loadGruposExcel(file) {
   }
 }
 
-async function loadGruposExcelNuevo(wb, semanSheets, status) {
-  // Parse each S1-S5 sheet
+
+async function loadFichasGrupos(wb, semanSheets, status) {
+  status.innerHTML = '<div class="alert alert-info">⏳ Leyendo Fichas_Grupos...</div>';
+
   const allSemanas = {};
   var totalKids = 0, totalGroups = 0;
 
   semanSheets.forEach(function(sheetName) {
     const semanaNum = sheetName.trim().toUpperCase().replace('S','');
     const semanaLabel = 'Semana ' + semanaNum;
-    const rows = XLSX.utils.sheet_to_json(wb.Sheets[sheetName], {header:1, defval:''});
-    
+    const rows = XLSX.utils.sheet_to_json(wb.Sheets[sheetName], {header:1, defval:'', cellDates:true});
+
     const groups = {};
-    
-    // Find all group header rows
-    for(var row = 0; row < rows.length; row++) {
-      const r = rows[row];
-      // Check col 0 for group name (e.g. "ROJO 1", "AZUL 2")
-      for(var col = 0; col < r.length; col += 5) {
-        const val = String(r[col]||'').trim().toUpperCase();
-        if(!val || val === 'NAN') continue;
-        const isGroupHeader = ['ROJO','AZUL','VERDE','AMARILLO','NARANJA','MORADO'].some(c => val.includes(c));
-        if(!isGroupHeader) continue;
-        if(val.match(/^(ROJO|AZUL|VERDE|AMARILLO|NARANJA|MORADO)$/) && !val.match(/\d/)) continue; // skip color-only headers
-        
-        const groupName = val.split(' ').map(w => w.charAt(0)+w.slice(1).toLowerCase()).join(' ');
-        if(!groups[groupName]) groups[groupName] = [];
-        
-        // Read kids below
-        for(var kr = row+1; kr < rows.length; kr++) {
-          const krow = rows[kr];
-          // Stop if hit another group header
-          const firstVal = String(krow[col]||'').trim().toUpperCase();
-          const isNextGroup = ['ROJO','AZUL','VERDE','AMARILLO','NARANJA','MORADO'].some(c => firstVal.includes(c)) && firstVal !== '';
-          if(isNextGroup) break;
-          
-          const nombre = String(krow[col+1]||'').trim();
-          const apellidos = String(krow[col+2]||'').trim();
-          if(!nombre || nombre === 'NAN' || nombre === '') continue;
-          
-          // Parse year
-          var anoNac = null;
-          const anoRaw = krow[col+3];
-          if(anoRaw) {
-            if(anoRaw instanceof Date) {
-              anoNac = anoRaw.getFullYear();
-            } else if(typeof anoRaw === 'number' && anoRaw > 1990 && anoRaw < 2030) {
-              anoNac = Math.round(anoRaw);
-            } else if(typeof anoRaw === 'string' && anoRaw.match(/\d{4}/)) {
-              anoNac = parseInt(anoRaw.match(/\d{4}/)[0]);
-            }
-          }
-          
-          const ts = Date.now() + Math.random();
-          groups[groupName].push({
-            id: String(ts),
-            nombre: nombre,
-            apellidos: apellidos,
-            anoNac: anoNac,
-            edad: anoNac ? (2025 - anoNac) : null,
-            comedor: false,
-            alergias: '',
-            obs: '',
-            semanas: [semanaLabel]
-          });
+    var currentGroup = null;
+    var skipHeader = false;
+
+    rows.forEach(function(row) {
+      const val = String(row[0]||'').trim();
+      const valUp = val.toUpperCase();
+
+      // Group header
+      const isGroup = ['ROJO','AZUL','VERDE','AMARILLO','NARANJA','MORADO'].some(c => valUp.includes(c));
+      if(isGroup && !valUp.match(/^(NOMBRE|NAME)$/)) {
+        if(val.match(/\d/) || valUp !== valUp.replace(/[1-9]/g,'')) {
+          // Has a number - it's a specific group like "ROJO 1"
+          currentGroup = val.split(' ').map(function(w){ return w.charAt(0).toUpperCase()+w.slice(1).toLowerCase(); }).join(' ');
+          groups[currentGroup] = [];
+          skipHeader = true;
+          return;
+        } else if(!valUp.match(/\d/)) {
+          // Just "ROJO" - could be a color-only header, make it group "Rojo 1" style
+          // Skip pure color headers
+          skipHeader = false;
+          return;
         }
       }
-    }
-    
-    // Filter out empty groups
-    const filtered = {};
+
+      // Skip column header row (Nombre, Apellidos, etc.)
+      if(skipHeader || valUp === 'NOMBRE' || valUp === 'NAME') {
+        skipHeader = false;
+        return;
+      }
+
+      if(!currentGroup || !val || val === 'nan') return;
+
+      var nombre = val;
+      var apellidos = String(row[1]||'').trim();
+      if(apellidos === 'nan') apellidos = '';
+
+      // Parse date/year
+      var anoNac = null;
+      var fecha = row[2];
+      if(fecha) {
+        if(fecha instanceof Date) {
+          anoNac = fecha.getFullYear();
+        } else {
+          var s = String(fecha).trim();
+          var m = s.match(/\d{4}/);
+          if(m) anoNac = parseInt(m[0]);
+          else if(s.includes('/')) {
+            var parts = s.split('/');
+            var y = parts[parts.length-1];
+            if(y.length === 2) y = '20'+y;
+            anoNac = parseInt(y)||null;
+          }
+        }
+      }
+
+      var matRaw = String(row[3]||'').trim().toLowerCase();
+      var matinera = ['sí','si','yes','1','s'].includes(matRaw);
+
+      var alerRaw = String(row[4]||'').trim();
+      var alergias = ['nan','ninguna','no','ninguno','no tiene','no tiene.','ninguna conocida','no tiene alergias','ninguna conocida.','no'].includes(alerRaw.toLowerCase()) ? '' : alerRaw;
+
+      var amigosRaw = String(row[5]||'').trim();
+      var amigos = ['nan','no','ninguno',''].includes(amigosRaw.toLowerCase()) ? '' : amigosRaw;
+
+      var otrosRaw = String(row[6]||'').trim();
+      var otros = ['nan',''].includes(otrosRaw) ? '' : otrosRaw;
+
+      var comRaw = String(row[7]||'').trim().toLowerCase();
+      var comedor = ['sí','si','yes','1','s'].includes(comRaw);
+
+      var ts = Date.now() + '_' + Math.random().toString(36).slice(2);
+      groups[currentGroup].push({
+        id: ts,
+        nombre: nombre,
+        apellidos: apellidos,
+        anoNac: anoNac,
+        edad: anoNac ? (2025 - anoNac) : null,
+        matinera: matinera,
+        alergias: alergias,
+        amigos: amigos,
+        otros: otros,
+        comedor: comedor,
+        semanas: [semanaLabel]
+      });
+    });
+
+    // Filter empty groups
+    var filtered = {};
     Object.keys(groups).forEach(function(g) {
       if(groups[g].length > 0) filtered[g] = groups[g];
     });
-    
+
     allSemanas[semanaLabel] = filtered;
     totalGroups += Object.keys(filtered).length;
-    totalKids += Object.values(filtered).reduce(function(a,g){return a+g.length;}, 0);
+    totalKids += Object.values(filtered).reduce(function(a,g){ return a+g.length; }, 0);
   });
 
-  // Check if existing grupos in Firebase — warn but allow
-  const existingGrupos = Object.keys(grupos).length > 0;
-  if(existingGrupos) {
-    if(!confirm('⚠️ Ya hay grupos cargados. ¿Quieres REEMPLAZARLOS con los del Excel?\n\nEsto borrará los grupos actuales y los sustituirá por los del Excel.\n\nPulsa Cancelar para no hacer nada.')) {
-      status.innerHTML = '<div class="alert alert-info">ℹ️ Importación cancelada. Los grupos actuales no se han modificado.</div>';
+  // Warn if existing grupos
+  if(Object.keys(grupos).length > 0) {
+    if(!confirm('⚠️ Ya hay grupos cargados.\n\n¿Reemplazar con los del Excel de Fichas?\n\nEsto borrará los grupos actuales.')) {
+      status.innerHTML = '<div class="alert alert-info">ℹ️ Importación cancelada.</div>';
       return;
     }
   }
@@ -3142,17 +3408,121 @@ async function loadGruposExcelNuevo(wb, semanSheets, status) {
   window._unsavedChanges = false;
   updateSaveReminder();
 
-  var semNames = Object.keys(allSemanas).join(', ');
-  status.innerHTML = `<div class="alert alert-success">
-    ✅ Importado correctamente: <strong>${totalGroups} grupos</strong>, <strong>${totalKids} niños</strong> en ${semanSheets.length} semanas.<br>
-    <span style="font-size:.78rem;color:#555">${semNames}</span><br>
-    <strong style="color:#00C46A">Los grupos se han guardado en Firebase automáticamente.</strong>
-  </div>`;
-  
-  logChange('generate', 'Grupos importados desde Excel — ' + totalKids + ' niños en ' + totalGroups + ' grupos');
-  showToast('✅ ' + totalKids + ' niños importados en ' + totalGroups + ' grupos', 'success');
-  
-  // Navigate to grupos view
+  // Count stats
+  var comedorTotal = 0, matineraTotal = 0, alergiasTotal = 0;
+  Object.values(allSemanas).forEach(function(gs) {
+    Object.values(gs).forEach(function(g) {
+      g.forEach(function(k) {
+        if(k.comedor) comedorTotal++;
+        if(k.matinera) matineraTotal++;
+        if(k.alergias) alergiasTotal++;
+      });
+    });
+  });
+
+  status.innerHTML = '<div class="alert alert-success">' +
+    '✅ <strong>Fichas importadas correctamente</strong><br>' +
+    '<strong>' + totalGroups + ' grupos</strong> · <strong>' + totalKids + ' niños</strong> · ' +
+    comedorTotal + ' comedor · ' + matineraTotal + ' matinera · ' + alergiasTotal + ' con alergias<br>' +
+    '<strong style="color:#00C46A">✅ Guardado en Firebase automáticamente</strong>' +
+    '</div>';
+
+  logChange('generate', 'Fichas importadas — ' + totalKids + ' niños en ' + totalGroups + ' grupos con comedor/matinera/alergias');
+  showToast('✅ ' + totalKids + ' niños importados con todos sus datos', 'success');
+  setTimeout(function(){ goStep(4); }, 800);
+}
+
+async function loadGruposExcelNuevo(wb, semanSheets, status) {
+  const allSemanas = {};
+  var totalKids = 0, totalGroups = 0;
+  const COLORS = ['ROJO','AZUL','VERDE','AMARILLO','NARANJA','MORADO'];
+  const GROUP_COL_WIDTH = 5;
+
+  semanSheets.forEach(function(sheetName) {
+    const semanaNum = sheetName.trim().toUpperCase().replace('S','');
+    const semanaLabel = 'Semana ' + semanaNum;
+    const rows = XLSX.utils.sheet_to_json(wb.Sheets[sheetName], {header:1, defval:'', cellDates:true});
+    const groups = {};
+
+    // Find group header rows (rows where col 0 has "ROJO 1", "AZUL 2" etc.)
+    var groupHeaderRows = [];
+    for(var r = 0; r < rows.length; r++) {
+      var val = String(rows[r][0]||'').trim().toUpperCase();
+      var hasColor = COLORS.some(function(c){ return val.includes(c); });
+      var hasNumber = val !== '' && /[0-9]/.test(val);
+      if(hasColor && hasNumber) groupHeaderRows.push(r);
+    }
+
+    for(var hi = 0; hi < groupHeaderRows.length; hi++) {
+      var headerRow = groupHeaderRows[hi];
+      var nextHeader = groupHeaderRows[hi+1] !== undefined ? groupHeaderRows[hi+1] : rows.length;
+
+      // Find all group columns in this header row (cols 0, 5, 10, 15...)
+      for(var col = 0; col < (rows[headerRow]||[]).length; col += GROUP_COL_WIDTH) {
+        var groupVal = String(rows[headerRow][col]||'').trim().toUpperCase();
+        if(!groupVal || !COLORS.some(function(c){ return groupVal.includes(c); })) continue;
+        if(!/[0-9]/.test(groupVal)) continue;
+
+        var groupName = groupVal.split(' ').map(function(w){
+          return w.charAt(0) + w.slice(1).toLowerCase();
+        }).join(' ');
+
+        if(!groups[groupName]) groups[groupName] = [];
+
+        for(var kr = headerRow+1; kr < nextHeader; kr++) {
+          var nombre = String((rows[kr]||[])[col+1]||'').trim();
+          var apellidos = String((rows[kr]||[])[col+2]||'').trim();
+          if(!nombre || nombre === '' || nombre.toLowerCase() === 'nan') continue;
+          if(apellidos.toLowerCase() === 'nan') apellidos = '';
+
+          var anoNac = null;
+          var anoRaw = (rows[kr]||[])[col+3];
+          if(anoRaw) {
+            if(anoRaw instanceof Date) anoNac = anoRaw.getFullYear();
+            else if(typeof anoRaw === 'number' && anoRaw > 1990 && anoRaw < 2030) anoNac = Math.round(anoRaw);
+          }
+
+          groups[groupName].push({
+            id: String(Date.now()) + '_' + Math.random().toString(36).slice(2),
+            nombre: nombre,
+            apellidos: apellidos,
+            anoNac: anoNac,
+            edad: anoNac ? (2025 - anoNac) : null,
+            comedor: false,
+            alergias: '',
+            obs: '',
+            semanas: [semanaLabel]
+          });
+        }
+      }
+    }
+
+    var filtered = {};
+    Object.keys(groups).forEach(function(g){ if(groups[g].length > 0) filtered[g] = groups[g]; });
+    allSemanas[semanaLabel] = filtered;
+    totalGroups += Object.keys(filtered).length;
+    totalKids += Object.values(filtered).reduce(function(a,g){ return a+g.length; }, 0);
+  });
+
+  if(Object.keys(grupos).length > 0) {
+    if(!confirm('Ya hay grupos cargados.\n\n¿Reemplazar con los del Excel?\n\nPulsa Cancelar para no hacer nada.')) {
+      status.innerHTML = '<div class="alert alert-info">Importacion cancelada.</div>';
+      return;
+    }
+  }
+
+  Object.keys(allSemanas).forEach(function(semana) {
+    grupos[semana] = Object.values(allSemanas[semana]);
+  });
+
+  saveToStorage();
+  window._saveGruposFirebase(grupos);
+  window._unsavedChanges = false;
+  updateSaveReminder();
+
+  status.innerHTML = '<div class="alert alert-success">OK: <strong>' + totalGroups + ' grupos</strong>, <strong>' + totalKids + ' ninos</strong> en ' + semanSheets.length + ' semanas.<br><strong style="color:#00C46A">Guardado en Firebase.</strong></div>';
+  logChange('generate', 'Grupos importados — ' + totalKids + ' ninos en ' + totalGroups + ' grupos');
+  showToast('OK ' + totalKids + ' ninos importados', 'success');
   setTimeout(function(){ goStep(4); }, 800);
 }
 
@@ -4969,6 +5339,103 @@ function renderStats() {
   el.appendChild(card('📐 Tamaño de grupos', sizeHtml));
 }
 
+
+// ══════════════════════════════════════════════
+// ENRIQUECER DATOS DE NIÑOS
+// ══════════════════════════════════════════════
+function enrichKidsData(input) {
+  var file = input.files[0];
+  if(!file) return;
+  input.value = '';
+
+  var reader = new FileReader();
+  reader.onload = function(e) {
+    try {
+      var wb = XLSX.read(e.target.result, {type:'array', cellDates:true});
+      var ws = wb.Sheets[wb.SheetNames[0]];
+      var rows = XLSX.utils.sheet_to_json(ws, {defval:''});
+
+      if(!rows.length) { showToast('⚠️ El archivo está vacío','error'); return; }
+
+      // Build lookup map: "nombre apellidos" -> data
+      var lookup = {};
+      rows.forEach(function(row) {
+        var nombre = String(row['Nombre alumno/a:']||row['Nombre']||row['nombre']||'').trim().toLowerCase();
+        var apellidos = String(row['Apellidos alumno/a:']||row['Apellidos']||row['apellidos']||'').trim().toLowerCase();
+        if(!nombre) return;
+        var key = nombre + ' ' + apellidos;
+        lookup[key] = row;
+      });
+
+      // Match and enrich
+      var updated = 0, notFound = 0;
+      Object.keys(grupos).forEach(function(semana) {
+        grupos[semana].forEach(function(grupo) {
+          grupo.forEach(function(kid) {
+            var key = (kid.nombre||'').trim().toLowerCase() + ' ' + (kid.apellidos||'').trim().toLowerCase();
+            var data = lookup[key];
+            if(!data) {
+              // Try partial match (first name only)
+              var keyFirst = (kid.nombre||'').trim().toLowerCase();
+              data = lookup[Object.keys(lookup).find(function(k){ return k.startsWith(keyFirst+' '); })||''];
+            }
+            if(!data) { notFound++; return; }
+            updated++;
+
+            // Enrich fields
+            var sexo = String(data['Sexo']||'').trim();
+            if(sexo) kid.sexo = sexo;
+
+            var fecha = data['Fecha de nacimiento'];
+            if(fecha) {
+              var ano = null;
+              if(fecha instanceof Date) ano = fecha.getFullYear();
+              else { var m = String(fecha).match(/\d{4}/); if(m) ano = parseInt(m[0]); }
+              if(ano) { kid.anoNac = ano; kid.edad = 2025 - ano; }
+            }
+
+            var talla = String(data['Talla de camiseta']||'').trim();
+            if(talla && talla !== 'nan') kid.talla = talla;
+
+            var matRaw = String(data['Servicio de Matinera']||'').trim().toLowerCase();
+            kid.matinera = ['sí','si','yes','1'].includes(matRaw);
+
+            var alerRaw = String(data['Alergias o intolerancias']||'').trim();
+            var alerBad = ['nan','no','ninguna','ninguno','no tiene','no tiene alergias','ninguna conocida',''];
+            kid.alergias = alerBad.includes(alerRaw.toLowerCase()) ? '' : alerRaw;
+
+            var amigosRaw = String(data['Amigos/as en el campus']||'').trim();
+            var amBad = ['nan','no','ninguno',''];
+            kid.amigos = amBad.includes(amigosRaw.toLowerCase()) ? '' : amigosRaw;
+
+            var otrosRaw = String(data['Otros']||'').trim();
+            kid.otros = ['nan','','no'].includes(otrosRaw.toLowerCase()) ? '' : otrosRaw;
+
+            var comRaw = String(data['Servicio de Comedor']||'').trim().toLowerCase();
+            kid.comedor = ['sí','si','yes','1'].includes(comRaw);
+          });
+        });
+      });
+
+      saveToStorage();
+      window._saveGruposFirebase(grupos);
+      window._unsavedChanges = false;
+      updateSaveReminder();
+
+      showToast('✅ ' + updated + ' niños actualizados' + (notFound > 0 ? ' · ' + notFound + ' no encontrados' : ''), 'success');
+      logChange('edit', 'Datos enriquecidos desde Excel — ' + updated + ' niños actualizados');
+
+      // Refresh view
+      var activeTurno = document.querySelector('.ttab.active');
+      if(activeTurno) refreshGrid(activeTurno.textContent.split('\n')[0].trim());
+
+    } catch(err) {
+      showToast('❌ Error: ' + err.message, 'error');
+      console.error(err);
+    }
+  };
+  reader.readAsArrayBuffer(file);
+}
 
 // ══════════════════════════════════════════════
 // EXPORTAR TALLAS DE CAMISETA
