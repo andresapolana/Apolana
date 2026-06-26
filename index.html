@@ -6021,109 +6021,164 @@ try { _changelog = JSON.parse(localStorage.getItem(CHANGELOG_KEY)||'[]'); } catc
 // ══════════════════════════════════════════════
 function showGlobalAttendance() {
   if(!window._fbDB) { alert('Necesitas Firebase conectado.'); return; }
+
   var modal = document.createElement('div');
   modal.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,.6);z-index:9999;display:flex;align-items:center;justify-content:center;padding:16px';
-  modal.innerHTML = '<div style="background:#fff;border-radius:16px;padding:28px;max-width:720px;width:100%;max-height:85vh;overflow-y:auto">' +
-    '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:18px">' +
-    '<div style="font-weight:800;font-size:1.2rem">📊 Asistencia global hoy</div>' +
-    '<button onclick="closeModal(this)">✕</button>' +
-    '</div>' +
-    '<div id="globalAttList">Cargando...</div>' +
+  modal.innerHTML =
+    '<div style="background:#fff;border-radius:16px;padding:24px;max-width:860px;width:100%;max-height:90vh;display:flex;flex-direction:column">' +
+      '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px;flex-shrink:0">' +
+        '<div style="font-weight:800;font-size:1.1rem">📊 Control de asistencia · Hoy</div>' +
+        '<div style="display:flex;gap:8px;align-items:center">' +
+          '<button onclick="loadGlobalAttendance()" style="background:#0066FF;border:none;color:#fff;border-radius:8px;padding:5px 12px;cursor:pointer;font-size:.78rem">🔄 Actualizar</button>' +
+          '<button onclick="closeModal(this)" style="background:none;border:none;font-size:1.4rem;cursor:pointer;color:#aaa">✕</button>' +
+        '</div>' +
+      '</div>' +
+      '<div id="globalAttSummary" style="display:flex;gap:10px;margin-bottom:14px;flex-wrap:wrap;flex-shrink:0"></div>' +
+      '<div id="globalAttList" style="overflow-y:auto;flex:1">Cargando...</div>' +
     '</div>';
   document.body.appendChild(modal);
+
+  // Auto-refresh every 30 seconds
+  window._globalAttInterval = setInterval(loadGlobalAttendance, 30000);
+  modal.addEventListener('remove', function(){ clearInterval(window._globalAttInterval); });
+  var closeBtn = modal.querySelector('button[style*="font-size:1.4rem"]');
+  if(closeBtn) {
+    var origClick = closeBtn.onclick;
+    closeBtn.addEventListener('click', function(){ clearInterval(window._globalAttInterval); });
+  }
+
+  loadGlobalAttendance();
+}
+
+function loadGlobalAttendance() {
+  var el = document.getElementById('globalAttList');
+  var summaryEl = document.getElementById('globalAttSummary');
+  if(!el) return;
 
   var today = new Date();
   var dateStr = today.getFullYear()+'-'+String(today.getMonth()+1).padStart(2,'0')+'-'+String(today.getDate()).padStart(2,'0');
 
-  // Build a map from monitor code -> {semana, gi} using asignaciones
-  var monRaw = null;
-  try { var ms=localStorage.getItem('campusMonitores'); if(ms) monRaw=JSON.parse(ms); } catch(e) {}
-  if(!monRaw && window._monitores) monRaw = {monitores:window._monitores, asignaciones:window._asignaciones||{}};
-  var monCodeToGroup = {}; // monCode -> {semana, gi, nombre}
-  if(monRaw && monRaw.asignaciones) {
-    Object.keys(monRaw.asignaciones).forEach(function(semana) {
-      Object.entries(monRaw.asignaciones[semana]).forEach(function(entry) {
-        var gi=entry[0], code=entry[1];
-        if(code) {
-          var mon = monRaw.monitores ? monRaw.monitores.find(function(m){return m.codigo===code;}) : null;
-          monCodeToGroup[code] = {semana:semana, gi:parseInt(gi), nombre:mon?mon.nombre:code};
-        }
-      });
-    });
+  // Get current week semana
+  var todayIdx = getCurrentDayIdx ? getCurrentDayIdx() : 0;
+  var wi = getWeekIdxForDay ? getWeekIdxForDay(todayIdx) : 0;
+  var todaySemana = CAMPUS_WEEKS && CAMPUS_WEEKS[wi] ? CAMPUS_WEEKS[wi].label : Object.keys(grupos)[0];
+
+  if(!todaySemana || !grupos[todaySemana]) {
+    el.innerHTML = '<p style="color:var(--muted);text-align:center;padding:20px">No hay grupos para hoy.</p>';
+    return;
   }
 
+  // Get monitor assignments
+  var monRaw = null;
+  try { var ms=localStorage.getItem('campusMonitores'); if(ms) monRaw=JSON.parse(ms); } catch(e) {}
+
   window._fbDB.collection('attendance').get().then(function(snap) {
-    var results = {}; // code -> {present, absent}
+    // Build attendance map: code -> kidName -> {status, arrived, picked, obs}
+    var attMap = {};
     snap.forEach(function(doc) {
       if(doc.id.endsWith('_'+dateStr)) {
         var code = doc.id.replace('att_','').replace('_'+dateStr,'');
         try {
-          var data = JSON.parse(doc.data().data||'{}');
-          var present = Object.values(data).filter(function(v){return v==='present'||v==='P';}).length;
-          var absent = Object.values(data).filter(function(v){return v==='absent'||v==='A';}).length;
-          results[code] = {present:present, absent:absent};
+          var raw = JSON.parse(doc.data().data||'{}');
+          attMap[code] = raw;
         } catch(e) {}
       }
     });
 
-    var el = document.getElementById('globalAttList');
-    if(!el) return;
+    // Build display
+    var totalArrived=0, totalPicked=0, totalAbsent=0, totalPending=0, totalKids=0;
+    var html = '';
 
-    // Build group list — combine auto codes + monitor codes
-    var allGroups = [];
-    // Get current week
-    var todayIdx = getCurrentDayIdx();
-    var todayWi = getWeekIdxForDay(todayIdx);
-    var todaySemana = CAMPUS_WEEKS[todayWi] ? CAMPUS_WEEKS[todayWi].label : null;
+    grupos[todaySemana].forEach(function(grupo, gi) {
+      var groupName = getGroupName(gi);
+      var autoCode = makeCode(todaySemana, gi);
+      var monCode = monRaw&&monRaw.asignaciones&&monRaw.asignaciones[todaySemana] ? (monRaw.asignaciones[todaySemana][gi]||'') : '';
+      var monNombre = '';
+      if(monCode && monRaw && monRaw.monitores) {
+        var mon = monRaw.monitores.find(function(m){return m.codigo===monCode;});
+        monNombre = mon ? mon.nombre : monCode;
+      }
 
-    if(todaySemana && grupos[todaySemana]) {
-      grupos[todaySemana].forEach(function(grupo, gi) {
-        var name = getGroupName(gi);
-        var autoCode = makeCode(todaySemana, gi);
-        // Find monitor assigned to this group
-        var monCode = null, monNombre = null;
-        if(monRaw && monRaw.asignaciones && monRaw.asignaciones[todaySemana]) {
-          monCode = monRaw.asignaciones[todaySemana][gi] || null;
-          if(monCode && monRaw.monitores) {
-            var mon = monRaw.monitores.find(function(m){return m.codigo===monCode;});
-            monNombre = mon ? mon.nombre : monCode;
-          }
-        }
-        // Check both codes for attendance
-        var att = results[monCode] || results[autoCode] || null;
-        allGroups.push({semana:todaySemana, name:name, code:autoCode, monCode:monCode, monNombre:monNombre, size:grupo.length, att:att});
+      var attData = attMap[monCode] || attMap[autoCode] || {};
+
+      // Count per group
+      var gArrived=0, gPicked=0, gAbsent=0, gPending=0;
+      grupo.forEach(function(kid) {
+        var name = fullName(kid);
+        var kidAtt = attData[name] || attData[kid.nombre] || {};
+        var status = typeof kidAtt==='string' ? kidAtt : (kidAtt.status||'pending');
+        var arrived = typeof kidAtt==='object' ? !!kidAtt.arrived : status==='present';
+        var picked = typeof kidAtt==='object' ? !!kidAtt.picked : false;
+        if(status==='absent') gAbsent++;
+        else if(picked) { gPicked++; gArrived++; }
+        else if(arrived) gArrived++;
+        else gPending++;
       });
-    }
 
-    if(!allGroups.length) {
-      el.innerHTML = '<p style="text-align:center;color:var(--muted)">No hay grupos para la semana actual.</p>';
-      return;
-    }
+      totalArrived+=gArrived; totalPicked+=gPicked;
+      totalAbsent+=gAbsent; totalPending+=gPending; totalKids+=grupo.length;
 
-    var hasAtt = allGroups.filter(function(g){return g.att;}).length;
-    var html = '<div style="font-size:.8rem;color:var(--muted);margin-bottom:12px">' +
-      (todaySemana||'Hoy') + ' · ' + hasAtt + ' de ' + allGroups.length + ' grupos han pasado lista</div>';
-    html += '<div style="display:flex;flex-direction:column;gap:6px">';
-    allGroups.forEach(function(g) {
-      var total = g.att ? g.att.present+g.att.absent : 0;
-      var pct = total ? Math.round(g.att.present/total*100) : 0;
-      var statusColor = !g.att ? '#ddd' : pct>=80 ? 'var(--grass)' : pct>=50 ? 'var(--sun)' : 'var(--coral)';
-      html += '<div style="display:flex;align-items:center;gap:10px;background:#f8f9fa;border-radius:8px;padding:10px 14px">' +
-        '<div style="width:10px;height:10px;border-radius:50%;background:' + statusColor + ';flex-shrink:0"></div>' +
-        '<div style="flex:1">' +
-          '<div style="font-size:.84rem;font-weight:600">' + g.name + '</div>' +
-          (g.monNombre ? '<div style="font-size:.72rem;color:var(--muted)">Monitor: ' + g.monNombre + '</div>' : '') +
-        '</div>' +
-        (g.att ? '<div style="font-size:.8rem;color:var(--grass);font-weight:600">' + g.att.present + '✅</div>' +
-                 '<div style="font-size:.8rem;color:var(--coral);font-weight:600">' + g.att.absent + '❌</div>' : '') +
-        '<div style="font-size:.75rem;color:' + (g.att?'var(--grass)':'var(--muted)') + '">' + (g.att?'✅ Lista pasada':'⏳ Sin lista') + '</div>' +
-        '</div>';
+      var colorMap = {Rojo:'#E53935',Verde:'#43A047',Azul:'#1E88E5',Amarillo:'#F9A825',Naranja:'#FB8C00',Morado:'#8E24AA'};
+      var colorKey = groupName.split(' ')[0];
+      var groupColor = colorMap[colorKey]||'#666';
+      var pct = grupo.length ? Math.round((gArrived/grupo.length)*100) : 0;
+
+      html += '<div style="background:#f8f9fa;border-radius:12px;border:1px solid #eee;margin-bottom:10px;overflow:hidden">';
+      // Group header
+      html += '<div style="background:'+groupColor+';padding:10px 14px;display:flex;justify-content:space-between;align-items:center">';
+      html += '<div style="color:#fff;font-weight:700;font-size:.9rem">'+groupName+(monNombre?' · '+monNombre:'')+'</div>';
+      html += '<div style="color:rgba(255,255,255,.9);font-size:.8rem">'+gArrived+'/'+grupo.length+' llegados</div>';
+      html += '</div>';
+
+      // Stats bar
+      html += '<div style="display:flex;gap:0;height:6px">';
+      if(gPicked) html += '<div style="flex:'+gPicked+';background:#8B5CF6" title="Recogidos"></div>';
+      if(gArrived-gPicked) html += '<div style="flex:'+(gArrived-gPicked)+';background:#3B82F6" title="Llegados"></div>';
+      if(gAbsent) html += '<div style="flex:'+gAbsent+';background:#EF4444" title="Ausentes"></div>';
+      if(gPending) html += '<div style="flex:'+gPending+';background:#e0e0e0" title="Pendientes"></div>';
+      html += '</div>';
+
+      // Kids list
+      html += '<div style="padding:10px 14px">';
+      html += '<div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(200px,1fr));gap:6px">';
+      grupo.forEach(function(kid) {
+        var name = fullName(kid);
+        var kidAtt = attData[name] || attData[kid.nombre] || {};
+        var status = typeof kidAtt==='string' ? kidAtt : (kidAtt.status||'pending');
+        var arrived = typeof kidAtt==='object' ? !!kidAtt.arrived : status==='present';
+        var picked = typeof kidAtt==='object' ? !!kidAtt.picked : false;
+        var obs = typeof kidAtt==='object' ? (kidAtt.obs||'') : '';
+
+        var icon, bg, col;
+        if(status==='absent') { icon='❌'; bg='#FFF0F0'; col='#CC0000'; }
+        else if(picked) { icon='🏠'; bg='#F5F3FF'; col='#7C3AED'; }
+        else if(arrived) { icon='✅'; bg='#EFF6FF'; col='#1D4ED8'; }
+        else { icon='⏳'; bg='#f8f9fa'; col='#999'; }
+
+        html += '<div style="background:'+bg+';border-radius:7px;padding:6px 8px;display:flex;align-items:center;gap:6px">';
+        html += '<span style="font-size:.9rem">'+icon+'</span>';
+        html += '<div style="flex:1;min-width:0">';
+        html += '<div style="font-size:.78rem;font-weight:600;color:'+col+';white-space:nowrap;overflow:hidden;text-overflow:ellipsis">'+name+'</div>';
+        if(obs) html += '<div style="font-size:.68rem;color:#888;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">📝 '+obs+'</div>';
+        html += '</div></div>';
+      });
+      html += '</div></div></div>';
     });
-    html += '</div>';
-    el.innerHTML = html;
+
+    el.innerHTML = html || '<p style="text-align:center;color:#aaa;padding:20px">Sin datos de asistencia hoy.</p>';
+
+    // Summary
+    if(summaryEl) {
+      summaryEl.innerHTML =
+        '<div style="background:#EFF6FF;border-radius:8px;padding:8px 14px;font-size:.82rem"><strong style="color:#1D4ED8">✅ '+totalArrived+'</strong> llegados</div>' +
+        '<div style="background:#F5F3FF;border-radius:8px;padding:8px 14px;font-size:.82rem"><strong style="color:#7C3AED">🏠 '+totalPicked+'</strong> recogidos</div>' +
+        '<div style="background:#FFF0F0;border-radius:8px;padding:8px 14px;font-size:.82rem"><strong style="color:#CC0000">❌ '+totalAbsent+'</strong> ausentes</div>' +
+        '<div style="background:#f8f9fa;border-radius:8px;padding:8px 14px;font-size:.82rem"><strong style="color:#999">⏳ '+totalPending+'</strong> sin confirmar</div>' +
+        '<div style="background:#ECFDF5;border-radius:8px;padding:8px 14px;font-size:.82rem"><strong style="color:#059669">'+totalKids+'</strong> total</div>';
+    }
+
   }).catch(function(e) {
-    var el = document.getElementById('globalAttList');
-    if(el) el.innerHTML = '<p style="color:red">Error: ' + e.message + '</p>';
+    if(el) el.innerHTML = '<p style="color:red">Error: '+e.message+'</p>';
   });
 }
 
