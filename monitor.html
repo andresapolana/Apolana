@@ -235,33 +235,6 @@ body{font-family:'Instrument Sans',sans-serif;background:#0A0E14;color:#fff;min-
     </div>
   </div>
 
-  <!-- SPECIAL SCREEN: MATINERA / COMEDOR -->
-  <div id="specialScreen" style="display:none;width:100%;max-width:560px;padding-bottom:100px">
-    <div class="attend-header">
-      <h2 id="specialTitle">—</h2>
-      <div class="attend-sub" id="specialSub"></div>
-    </div>
-    <div class="date-nav">
-      <button onclick="specialChangeDay(-1)">◀</button>
-      <div style="flex:1;text-align:center">
-        <div class="date-label" id="specialDateLabel">—</div>
-        <div class="day-badge" id="specialDayBadge"></div>
-      </div>
-      <button onclick="specialChangeDay(1)">▶</button>
-    </div>
-    <div class="summary">
-      <div class="sum-pill sum-p">✅ <span id="spCP">0</span></div>
-      <div class="sum-pill sum-a">❌ <span id="spCA">0</span></div>
-      <div class="sum-pill sum-t">👥 <span id="spCT">0</span></div>
-    </div>
-    <div class="attend-list" id="specialList"></div>
-    <div class="save-bar">
-      <button class="btn-save" onclick="saveSpecial()">💾 Guardar</button>
-      <span class="saved-msg" id="specialSavedMsg">✅ Guardado</span>
-      <button class="btn-exit" onclick="exitSpecial()">Salir</button>
-    </div>
-  </div>
-
 </div>
 
 <script>
@@ -280,7 +253,8 @@ const GROUP_COLORS=[
   {name:'Azul',bg:'#2980B9'},{name:'Amarillo',bg:'#F39C12'},
 ];
 function getGroupColor(gi){return GROUP_COLORS[gi%GROUP_COLORS.length].bg;}
-function getGroupName(gi){return GROUP_COLORS[gi%GROUP_COLORS.length].name+' '+(Math.floor(gi/GROUP_COLORS.length)+1);}
+function getGroupName(gi){
+  if(gi < 0) return '';
 
 function getWeekDays(wi){
   const w=CAMPUS_WEEKS[wi];if(!w)return[];
@@ -317,280 +291,114 @@ function makeCode(semana,gi){
 // ══════════════════════════════════════════════
 // SPECIAL MODES: MATINERA & COMEDOR
 // ══════════════════════════════════════════════
-var _specialMode = null; // 'matinera' or 'comedor'
-var _specialDayIdx = 0;
 
 function enterSpecialMode(mode) {
-  _specialMode = mode;
-  _specialDayIdx = currentCampusDay();
-
-  document.getElementById('pinSection').style.display = 'none';
-  document.getElementById('specialScreen').style.display = 'block';
-
-  var title = mode === 'matinera' ? '🌅 Matinera' : '🍽️ Comedor';
-  document.getElementById('specialTitle').textContent = title;
-
-  renderSpecialDay();
-}
-
-function exitSpecial() {
-  document.getElementById('specialScreen').style.display = 'none';
-  document.getElementById('pinSection').style.display = 'flex';
-  document.getElementById('pinInput').value = '';
-  _specialMode = null;
-}
-
-function specialChangeDay(delta) {
-  var all = getAllDays();
-  _specialDayIdx = Math.max(0, Math.min(_specialDayIdx + delta, all.length - 1));
-  renderSpecialDay();
-}
-
-function getSpecialKey(mode, dateStr) {
-  return 'special_' + mode + '_' + dateStr;
-}
-
-function getCurrentSemanaForDay(di) {
-  var all = getAllDays();
-  var day = all[Math.max(0, Math.min(di, all.length-1))];
-  if(!day) return null;
-  for(var wi = 0; wi < CAMPUS_WEEKS.length; wi++) {
-    var w = CAMPUS_WEEKS[wi];
-    var wStart = new Date(w.start);
-    var wEnd = new Date(w.end);
-    if(day >= wStart && day <= wEnd) return w.label;
+  // Wait for grupos to load
+  var g = window._grupos || {};
+  if(!Object.keys(g).length) {
+    try { var ls = localStorage.getItem('campusGrupos3'); if(ls) window._grupos = JSON.parse(ls); } catch(e) {}
+    g = window._grupos || {};
   }
-  return null;
-}
 
-async function renderSpecialDay() {
-  var all = getAllDays();
-  var di = Math.max(0, Math.min(_specialDayIdx, all.length-1));
-  var day = all[di];
-  if(!day) return;
+  // Get current semana
+  var di = currentCampusDay();
+  var wi = getWeekIdx(di);
+  var semana = CAMPUS_WEEKS[wi] ? CAMPUS_WEEKS[wi].label : null;
 
-  var ds = dateStr(day);
-  var semana = getCurrentSemanaForDay(di);
-  var grupos_all = window._grupos || {};
+  if(!semana || !g[semana]) {
+    // Try all semanas, use first with data
+    semana = Object.keys(g)[0] || null;
+  }
 
-  // Date display
-  var days = ['Dom','Lun','Mar','Mié','Jue','Vie','Sáb'];
-  var months = ['ene','feb','mar','abr','may','jun','jul','ago','sep','oct','nov','dic'];
-  document.getElementById('specialDateLabel').textContent = days[day.getDay()] + ' ' + day.getDate() + ' ' + months[day.getMonth()];
-  document.getElementById('specialDayBadge').textContent = semana || '';
+  if(!semana) {
+    showToast('No hay grupos cargados todavía', 'error');
+    return;
+  }
 
-  // Get all kids for this mode
-  var allKids = [];
-  if(semana && grupos_all[semana]) {
-    grupos_all[semana].forEach(function(grupo, gi) {
-      grupo.forEach(function(kid) {
-        if(_specialMode === 'matinera' && kid.matinera) {
-          allKids.push({kid: kid, gi: gi, semana: semana});
-        } else if(_specialMode === 'comedor' && kid.comedor) {
-          allKids.push({kid: kid, gi: gi, semana: semana});
-        }
-      });
+  // Collect kids for this mode from ALL groups in this semana
+  var kids = [];
+  var seen = new Set();
+  g[semana].forEach(function(grupo) {
+    grupo.forEach(function(kid) {
+      var hasMatinera = kid.matinera === true || kid.matinera === 'true' || kid.matinera === 'Sí' || kid.matinera === 'Si' || kid.matinera === 1;
+      var hasComedor = kid.comedor === true || kid.comedor === 'true' || kid.comedor === 'Sí' || kid.comedor === 'Si' || kid.comedor === 1;
+      var name = fullName(kid);
+      if(seen.has(name)) return;
+      if(mode === 'matinera' && hasMatinera) { seen.add(name); kids.push(kid); }
+      if(mode === 'comedor' && hasComedor) { seen.add(name); kids.push(kid); }
     });
-  }
+  });
 
   // Sort by name
-  allKids.sort(function(a,b){ return fullName(a.kid).localeCompare(fullName(b.kid)); });
+  kids.sort(function(a,b){ return fullName(a).localeCompare(fullName(b)); });
 
-  document.getElementById('specialSub').textContent = allKids.length + ' niños · ' + (_specialMode === 'matinera' ? 'Matinera 7:40h' : 'Comedor');
-
-  // Load saved data
-  var key = getSpecialKey(_specialMode, ds);
-  var saved = {};
-  try { var s = localStorage.getItem(key); if(s) saved = JSON.parse(s); } catch(e) {}
-  if(window._fbDB) {
-    try {
-      var snap = await window._fbDB.collection('attendance').doc(key).get();
-      if(snap.exists) saved = JSON.parse(snap.data().data || '{}');
-    } catch(e) {}
+  if(!kids.length) {
+    var field = mode === 'matinera' ? 'matinera' : 'comedor';
+    showToast('No hay niños con ' + field + ' en ' + semana + '. ¿Están los datos enriquecidos?', 'error');
+    return;
   }
 
-  // For COMEDOR: also check monitor attendance data for aComedor flags
-  if(_specialMode === 'comedor' && semana && window._grupos && window._grupos[semana]) {
-    var monRaw = null;
-    try { var ms=localStorage.getItem('campusMonitores'); if(ms) monRaw=JSON.parse(ms); } catch(e) {}
-    var groupChecks = [];
-    window._grupos[semana].forEach(function(grupo, gi) {
-      var monCode = monRaw&&monRaw.asignaciones&&monRaw.asignaciones[semana] ? (monRaw.asignaciones[semana][gi]||'') : '';
-      var autoCode = 'S'+(CAMPUS_WEEKS.findIndex(function(w){return w.label===semana;})+1)+getGroupName(gi).toUpperCase().replace(' ','');
-      var attKey = 'att_'+(monCode||autoCode)+'_'+ds;
-      groupChecks.push(window._fbDB ? window._fbDB.collection('attendance').doc(attKey).get().catch(function(){return null;}) : Promise.resolve(null));
-    });
-    try {
-      var results = await Promise.all(groupChecks);
-      results.forEach(function(snap) {
-        if(!snap || !snap.exists) return;
-        try {
-          var attData = JSON.parse(snap.data().data||'{}');
-          Object.keys(attData).forEach(function(kidName) {
-            var kd = attData[kidName];
-            if(typeof kd === 'object' && kd.aComedor) {
-              if(!saved[kidName]) saved[kidName] = {};
-              saved[kidName].markedByMonitor = true; // flag shown in UI
-            }
-          });
-        } catch(e) {}
+  // Use the normal monitorGroup system — just fake a group
+  monitorGroup = {
+    turno: semana,
+    groupIdx: -1,
+    kids: kids,
+    code: mode.toUpperCase(),
+    monitorNombre: mode === 'matinera' ? 'Matinera' : 'Comedor',
+    isSpecial: mode
+  };
+
+  dayIdx = di;
+  document.getElementById('pinSection').style.display = 'none';
+  document.getElementById('attendScreen').style.display = 'block';
+
+  var title = mode === 'matinera' ? '🌅 Matinera' : '🍽️ Comedor';
+  document.getElementById('monTitle').textContent = title + ' · ' + semana;
+  document.getElementById('monSub').textContent = kids.length + ' niños · ' + (mode === 'matinera' ? 'Entrada 7:40h' : 'Hora de comer');
+
+  // Week jumps
+  var c = 0;
+  document.getElementById('weekJumps').innerHTML = CAMPUS_WEEKS.map(function(w, wi2) {
+    var days = getWeekDays(wi2);
+    var isCur = wi2 === wi;
+    var html = '<button class="week-btn'+(isCur?' active':'')+'" onclick="jumpToSpecialWeek('+c+',''+mode+'')">' + w.label + '</button>';
+    c += days.length;
+    return html;
+  }).join('');
+
+  renderAttendList();
+}
+
+function jumpToSpecialWeek(startDi, mode) {
+  // Change semana and reload kids for that semana
+  var wi = getWeekIdx(startDi);
+  var semana = CAMPUS_WEEKS[wi] ? CAMPUS_WEEKS[wi].label : null;
+  if(!semana) return;
+
+  var g = window._grupos || {};
+  var kids = [];
+  var seen = new Set();
+  if(g[semana]) {
+    g[semana].forEach(function(grupo) {
+      grupo.forEach(function(kid) {
+        var hasMatinera = kid.matinera === true || kid.matinera === 'true' || kid.matinera === 'Sí' || kid.matinera === 'Si' || kid.matinera === 1;
+        var hasComedor = kid.comedor === true || kid.comedor === 'true' || kid.comedor === 'Sí' || kid.comedor === 'Si' || kid.comedor === 1;
+        var name = fullName(kid);
+        if(seen.has(name)) return;
+        if(mode === 'matinera' && hasMatinera) { seen.add(name); kids.push(kid); }
+        if(mode === 'comedor' && hasComedor) { seen.add(name); kids.push(kid); }
       });
-    } catch(e) {}
+    });
   }
+  kids.sort(function(a,b){ return fullName(a).localeCompare(fullName(b)); });
 
-  // Render list
-  var list = document.getElementById('specialList');
-  list.innerHTML = '';
-  var color = _specialMode === 'matinera' ? '#F59E0B' : '#10B981';
-
-  allKids.forEach(function(item) {
-    var kid = item.kid;
-    var name = fullName(kid);
-    var kidData = saved[name] || {};
-    var arrived = !!kidData.arrived;
-    var picked = !!kidData.picked;
-    var obs = kidData.obs || '';
-
-    var div = document.createElement('div');
-    div.className = 'attend-item' + (arrived ? ' arrived' : '');
-    div.dataset.nombre = name;
-    div.dataset.arrived = arrived ? '1' : '0';
-    div.dataset.picked = picked ? '1' : '0';
-    div.dataset.obs = obs;
-
-    var initials = name.split(' ').map(function(w){return w[0];}).join('').substring(0,2).toUpperCase();
-
-    var avatar = document.createElement('div');
-    avatar.className = 'attend-avatar';
-    avatar.style.background = color;
-    avatar.textContent = initials;
-
-    var info = document.createElement('div');
-    info.style.flex = '1';
-
-    var nameEl = document.createElement('div');
-    nameEl.className = 'attend-name';
-    nameEl.textContent = name;
-
-    // Group tag
-    var groupName = getGroupName(item.gi);
-    var markedByMonitor = typeof (saved[name]||{}).markedByMonitor !== 'undefined' ? (saved[name]||{}).markedByMonitor : false;
-    var groupTag = document.createElement('div');
-    groupTag.style.cssText = 'font-size:.7rem;color:#8899AA;margin-top:2px';
-    groupTag.textContent = groupName + ' · ' + semana + (markedByMonitor ? ' · ✔️ Monitor lo envió' : '');
-
-    var btnRow = document.createElement('div');
-    btnRow.style.cssText = 'display:flex;gap:6px;margin-top:7px;flex-wrap:wrap';
-
-    function mkBtn(text, activeColor, isActive) {
-      var b = document.createElement('button');
-      b.style.cssText = 'background:'+(isActive?activeColor:'none')+';border:1px solid '+(isActive?activeColor:'rgba(255,255,255,.2)')+';color:'+(isActive?'#fff':'#8899AA')+';border-radius:7px;padding:5px 10px;cursor:pointer;font-size:.75rem;font-weight:600;white-space:nowrap';
-      b.textContent = text;
-      return b;
-    }
-
-    var arrivedBtn = mkBtn(arrived ? '✅ Llegó' : '☐ Llegó', color, arrived);
-    var pickedBtn = mkBtn(picked ? '🏠 Recogido' : '☐ Recogido', '#8B5CF6', picked);
-    var obsBtn = document.createElement('button');
-    obsBtn.className = 'btn-obs' + (obs ? ' has-obs' : '');
-    obsBtn.textContent = obs ? '📝 ' + obs.substring(0,18) + (obs.length>18?'...':'') : '+ Nota';
-
-    arrivedBtn.addEventListener('click', function(e) {
-      e.stopPropagation();
-      var a = div.dataset.arrived !== '1';
-      div.dataset.arrived = a ? '1' : '0';
-      div.classList.toggle('arrived', a);
-      arrivedBtn.style.background = a ? color : 'none';
-      arrivedBtn.style.borderColor = a ? color : 'rgba(255,255,255,.2)';
-      arrivedBtn.style.color = a ? '#fff' : '#8899AA';
-      arrivedBtn.textContent = a ? '✅ Llegó' : '☐ Llegó';
-      updateSpecialCounts(); autoSaveSpecial();
-    });
-
-    pickedBtn.addEventListener('click', function(e) {
-      e.stopPropagation();
-      var p = div.dataset.picked !== '1';
-      div.dataset.picked = p ? '1' : '0';
-      pickedBtn.style.background = p ? '#8B5CF6' : 'none';
-      pickedBtn.style.borderColor = p ? '#8B5CF6' : 'rgba(255,255,255,.2)';
-      pickedBtn.style.color = p ? '#fff' : '#8899AA';
-      pickedBtn.textContent = p ? '🏠 Recogido' : '☐ Recogido';
-      updateSpecialCounts(); autoSaveSpecial();
-    });
-
-    obsBtn.addEventListener('click', function(e) {
-      e.stopPropagation();
-      var cur = div.dataset.obs || '';
-      var nw = prompt('Nota para ' + name + ':', cur);
-      if(nw === null) return;
-      nw = nw.trim();
-      div.dataset.obs = nw;
-      obsBtn.className = 'btn-obs' + (nw ? ' has-obs' : '');
-      obsBtn.textContent = nw ? '📝 ' + nw.substring(0,18)+(nw.length>18?'...':'') : '+ Nota';
-      autoSaveSpecial();
-    });
-
-    btnRow.appendChild(arrivedBtn);
-    btnRow.appendChild(pickedBtn);
-    btnRow.appendChild(obsBtn);
-    info.appendChild(nameEl);
-    info.appendChild(groupTag);
-    info.appendChild(btnRow);
-    div.appendChild(avatar);
-    div.appendChild(info);
-    list.appendChild(div);
-  });
-
-  updateSpecialCounts();
+  monitorGroup.turno = semana;
+  monitorGroup.kids = kids;
+  monitorGroup.isSpecial = mode;
+  dayIdx = startDi;
+  renderAttendList();
 }
 
-function updateSpecialCounts() {
-  var items = document.querySelectorAll('#specialList .attend-item');
-  var arrived = 0, picked = 0;
-  items.forEach(function(el) {
-    if(el.dataset.arrived === '1') arrived++;
-    if(el.dataset.picked === '1') picked++;
-  });
-  document.getElementById('spCP').textContent = arrived + (picked ? ' ('+picked+' 🏠)' : '');
-  document.getElementById('spCA').textContent = 0;
-  document.getElementById('spCT').textContent = items.length;
-}
-
-var _autoSaveSpecialTimer = null;
-function autoSaveSpecial() {
-  if(_autoSaveSpecialTimer) clearTimeout(_autoSaveSpecialTimer);
-  _autoSaveSpecialTimer = setTimeout(saveSpecial, 1500);
-}
-
-async function saveSpecial() {
-  var all = getAllDays();
-  var di = Math.max(0, Math.min(_specialDayIdx, all.length-1));
-  var day = all[di];
-  if(!day) return;
-  var ds = dateStr(day);
-  var key = getSpecialKey(_specialMode, ds);
-
-  var data = {};
-  document.querySelectorAll('#specialList .attend-item').forEach(function(el) {
-    if(!el.dataset.nombre) return;
-    data[el.dataset.nombre] = {
-      arrived: el.dataset.arrived === '1',
-      picked: el.dataset.picked === '1',
-      obs: el.dataset.obs || ''
-    };
-  });
-
-  try { localStorage.setItem(key, JSON.stringify(data)); } catch(e) {}
-  if(window._fbDB) {
-    try {
-      await window._fbDB.collection('attendance').doc(key).set({data: JSON.stringify(data), updated: new Date()});
-    } catch(e) {}
-  }
-
-  var msg = document.getElementById('specialSavedMsg');
-  msg.style.display = 'block';
-  setTimeout(function(){ msg.style.display = 'none'; }, 2000);
-}
 
 function enterPin(){
   const pin=document.getElementById('pinInput').value.trim().toUpperCase();
