@@ -252,8 +252,8 @@ const GROUP_COLORS=[
   {name:'Rojo',bg:'#E74C3C'},{name:'Verde',bg:'#27AE60'},
   {name:'Azul',bg:'#2980B9'},{name:'Amarillo',bg:'#F39C12'},
 ];
-function getGroupColor(gi){return GROUP_COLORS[gi%GROUP_COLORS.length].bg;}
-function getGroupName(gi){return GROUP_COLORS[gi%GROUP_COLORS.length].name+' '+(Math.floor(gi/GROUP_COLORS.length)+1);}
+function getGroupColor(gi){if(gi<0)return '#6B7AAD';return GROUP_COLORS[gi%GROUP_COLORS.length].bg;}
+function getGroupName(gi){if(gi<0)return '';return GROUP_COLORS[gi%GROUP_COLORS.length].name+' '+(Math.floor(gi/GROUP_COLORS.length)+1);}
 
 function getWeekDays(wi){
   const w=CAMPUS_WEEKS[wi];if(!w)return[];
