@@ -512,62 +512,188 @@ async function renderList(){
   const ALERGIA_NEG = new Set(['no','no tiene','no tiene alergias','ninguna','ninguno','ninguna conocida','nada','no conocida','no tiene ninguna','ninguna alergia','no alergia','sin alergias','no tiene alergia','ninguna conocida hasta el momento','no conocidas']);
   function cleanAlergia(v){ if(!v) return ''; const vl=v.trim().toLowerCase().replace(/\.+$/,''); if(ALERGIA_NEG.has(vl)||/^no\b/.test(vl)||/^ninguna?\b/.test(vl)) return ''; return v.trim(); }
 
-  monitorGroup.kids.forEach(kid=>{
-    const name=(kid.apellidos?kid.nombre+' '+kid.apellidos:kid.nombre);
-    const status=saved[name]||saved[kid.nombre]||'pending';
-    const div=document.createElement('div');
-    div.className='attend-item'+(status==='present'?' present':status==='absent'?' absent':'');
-    div.dataset.nombre=name;div.dataset.status=status;
-    const initials=name.split(' ').map(w=>w[0]).join('').substring(0,2).toUpperCase();
-    const icon=status==='present'?'✅':status==='absent'?'❌':'⬜';
-    const alergias = cleanAlergia(kid.alergias);
-    const otros = (kid.otros||'').trim();
-    const obs = (kid.obs||'').trim();
+  monitorGroup.kids.forEach(function(kid) {
+    var name = (kid.apellidos ? kid.nombre+' '+kid.apellidos : kid.nombre);
+    var kidData = saved[name] || saved[kid.nombre] || {};
+    var status = typeof kidData === 'string' ? kidData : (kidData.status || 'pending');
+    var arrived = typeof kidData === 'object' ? !!kidData.arrived : status === 'present';
+    var picked = typeof kidData === 'object' ? !!kidData.picked : false;
+    var aComedor = typeof kidData === 'object' ? !!kidData.aComedor : false;
+    var dayObs = typeof kidData === 'object' ? (kidData.obs || '') : '';
 
-    div.innerHTML=`
-      <div class="attend-avatar" style="background:${color}">${initials}</div>
-      <div style="flex:1;min-width:0">
-        <div class="attend-name">${name}</div>
-        <div style="display:flex;flex-wrap:wrap;gap:5px;margin-top:4px;align-items:center">
-          ${kid.comedor?'<span style="font-size:.68rem;color:#FFB800;background:rgba(255,184,0,.12);border:1px solid rgba(255,184,0,.3);border-radius:4px;padding:2px 7px;white-space:nowrap">🍽️ Comedor</span>':''}
-          ${kid.matinera?'<span style="font-size:.68rem;color:#aaa;background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.12);border-radius:4px;padding:2px 7px;white-space:nowrap">🌅 Matinera</span>':''}
-          ${alergias?`<span style="font-size:.68rem;color:#FF4D4D;background:rgba(255,77,77,.12);border:1px solid rgba(255,77,77,.3);border-radius:4px;padding:2px 7px;white-space:nowrap;font-weight:600">⚠️ ${alergias}</span>`:''}
-        </div>
-        ${otros?`<div style="font-size:.72rem;color:#8899AA;margin-top:4px;padding:4px 8px;background:rgba(255,255,255,.04);border-radius:6px;border-left:2px solid rgba(107,122,173,.4)">📝 ${otros}</div>`:''}
-        ${obs?`<div style="font-size:.72rem;color:#6B7AAD;margin-top:3px;padding:3px 8px;background:rgba(107,122,173,.08);border-radius:6px">🔒 ${obs}</div>`:''}
-      </div>
-      <div class="attend-status" style="flex-shrink:0">${icon}</div>`;
-    div.onclick=()=>{
-      const s=div.dataset.status;
-      const n=s==='pending'?'present':s==='present'?'absent':'pending';
-      div.dataset.status=n;
-      div.className='attend-item'+(n==='present'?' present':n==='absent'?' absent':'');
-      div.querySelector('.attend-status').textContent=n==='present'?'✅':n==='absent'?'❌':'⬜';
-      updateCounts();
-    };
+    var div = document.createElement('div');
+    var stateClass = status === 'absent' ? ' absent' : (arrived || status === 'present') ? ' arrived' : '';
+    div.className = 'attend-item' + stateClass;
+    div.dataset.nombre = name;
+    div.dataset.status = status;
+    div.dataset.arrived = arrived ? '1' : '0';
+    div.dataset.picked = picked ? '1' : '0';
+    div.dataset.acomedor = aComedor ? '1' : '0';
+    div.dataset.obs = dayObs;
+
+    var initials = name.split(' ').map(function(w){ return w[0]; }).join('').substring(0,2).toUpperCase();
+    var alergias = cleanAlergia(kid.alergias);
+    var otros = (kid.otros||'').trim();
+
+    var avatar = document.createElement('div');
+    avatar.className = 'attend-avatar';
+    avatar.style.background = color;
+    avatar.textContent = initials;
+
+    var info = document.createElement('div');
+    info.style.cssText = 'flex:1;min-width:0';
+
+    var nameEl = document.createElement('div');
+    nameEl.className = 'attend-name';
+    nameEl.textContent = name;
+
+    var tagsEl = document.createElement('div');
+    tagsEl.style.cssText = 'display:flex;flex-wrap:wrap;gap:5px;margin-top:4px;align-items:center';
+    if(kid.comedor) tagsEl.innerHTML += '<span style="font-size:.68rem;color:#FFB800;background:rgba(255,184,0,.12);border:1px solid rgba(255,184,0,.3);border-radius:4px;padding:2px 7px">🍽️ Comedor</span>';
+    if(kid.matinera) tagsEl.innerHTML += '<span style="font-size:.68rem;color:#aaa;background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.12);border-radius:4px;padding:2px 7px">🌅 Matinera</span>';
+    if(alergias) tagsEl.innerHTML += '<span style="font-size:.68rem;color:#FF4D4D;background:rgba(255,77,77,.12);border:1px solid rgba(255,77,77,.3);border-radius:4px;padding:2px 7px;font-weight:600">⚠️ ' + alergias + '</span>';
+
+    var btnRow = document.createElement('div');
+    btnRow.style.cssText = 'display:flex;gap:6px;margin-top:8px;flex-wrap:wrap';
+
+    function mkBtn(text, activeColor, isActive) {
+      var b = document.createElement('button');
+      b.style.cssText = 'background:' + (isActive ? activeColor : 'none') + ';border:1px solid ' + (isActive ? activeColor : 'rgba(255,255,255,.2)') + ';color:' + (isActive ? '#fff' : '#8899AA') + ';border-radius:7px;padding:5px 10px;cursor:pointer;font-size:.75rem;font-weight:600;white-space:nowrap';
+      b.textContent = text;
+      return b;
+    }
+
+    var arrivedBtn = mkBtn(arrived ? '✅ Llegó' : '☐ Llegó', '#3B82F6', arrived);
+    var pickedBtn = mkBtn(picked ? '🏠 Recogido' : '☐ Recogido', '#8B5CF6', picked);
+    var absBtn = mkBtn(status === 'absent' ? '❌ Ausente' : '☐ Ausente', '#EF4444', status === 'absent');
+    var obsBtn = document.createElement('button');
+    obsBtn.className = 'btn-obs' + (dayObs ? ' has-obs' : '');
+    obsBtn.textContent = dayObs ? '📝 ' + dayObs.substring(0,18) + (dayObs.length > 18 ? '...' : '') : '+ Nota';
+
+    arrivedBtn.addEventListener('click', function(e) {
+      e.stopPropagation();
+      var a = div.dataset.arrived !== '1';
+      div.dataset.arrived = a ? '1' : '0';
+      if(a) { div.dataset.status = 'present'; div.classList.remove('absent'); div.classList.add('arrived'); }
+      arrivedBtn.style.background = a ? '#3B82F6' : 'none';
+      arrivedBtn.style.borderColor = a ? '#3B82F6' : 'rgba(255,255,255,.2)';
+      arrivedBtn.style.color = a ? '#fff' : '#8899AA';
+      arrivedBtn.textContent = a ? '✅ Llegó' : '☐ Llegó';
+      updateCounts(); autoSave();
+    });
+    pickedBtn.addEventListener('click', function(e) {
+      e.stopPropagation();
+      var p = div.dataset.picked !== '1';
+      div.dataset.picked = p ? '1' : '0';
+      pickedBtn.style.background = p ? '#8B5CF6' : 'none';
+      pickedBtn.style.borderColor = p ? '#8B5CF6' : 'rgba(255,255,255,.2)';
+      pickedBtn.style.color = p ? '#fff' : '#8899AA';
+      pickedBtn.textContent = p ? '🏠 Recogido' : '☐ Recogido';
+      updateCounts(); autoSave();
+    });
+    absBtn.addEventListener('click', function(e) {
+      e.stopPropagation();
+      var ab = div.dataset.status !== 'absent';
+      div.dataset.status = ab ? 'absent' : 'pending';
+      div.dataset.arrived = '0';
+      div.classList.toggle('absent', ab);
+      div.classList.remove('arrived');
+      absBtn.style.background = ab ? '#EF4444' : 'none';
+      absBtn.style.borderColor = ab ? '#EF4444' : 'rgba(255,255,255,.2)';
+      absBtn.style.color = ab ? '#fff' : '#8899AA';
+      absBtn.textContent = ab ? '❌ Ausente' : '☐ Ausente';
+      arrivedBtn.style.background = 'none'; arrivedBtn.style.borderColor = 'rgba(255,255,255,.2)'; arrivedBtn.style.color = '#8899AA'; arrivedBtn.textContent = '☐ Llegó';
+      updateCounts(); autoSave();
+    });
+    obsBtn.addEventListener('click', function(e) {
+      e.stopPropagation();
+      var cur = div.dataset.obs || '';
+      var nw = prompt('Nota para ' + name + ':', cur);
+      if(nw === null) return;
+      nw = nw.trim();
+      div.dataset.obs = nw;
+      obsBtn.className = 'btn-obs' + (nw ? ' has-obs' : '');
+      obsBtn.textContent = nw ? '📝 ' + nw.substring(0,18) + (nw.length>18?'...':'') : '+ Nota';
+      autoSave();
+    });
+
+    btnRow.appendChild(arrivedBtn);
+    btnRow.appendChild(pickedBtn);
+    btnRow.appendChild(absBtn);
+
+    if(kid.comedor) {
+      var comedorBtn = mkBtn(aComedor ? '🍽️ A comedor' : '☐ A comedor', '#10B981', aComedor);
+      comedorBtn.addEventListener('click', function(e) {
+        e.stopPropagation();
+        var c = div.dataset.acomedor !== '1';
+        div.dataset.acomedor = c ? '1' : '0';
+        comedorBtn.style.background = c ? '#10B981' : 'none';
+        comedorBtn.style.borderColor = c ? '#10B981' : 'rgba(255,255,255,.2)';
+        comedorBtn.style.color = c ? '#fff' : '#8899AA';
+        comedorBtn.textContent = c ? '🍽️ A comedor' : '☐ A comedor';
+        autoSave();
+      });
+      btnRow.appendChild(comedorBtn);
+    }
+
+    btnRow.appendChild(obsBtn);
+
+    if(otros) {
+      var otrosEl = document.createElement('div');
+      otrosEl.style.cssText = 'font-size:.72rem;color:#8899AA;margin-top:4px;padding:4px 8px;background:rgba(255,255,255,.04);border-radius:6px;border-left:2px solid rgba(107,122,173,.4)';
+      otrosEl.textContent = '📝 ' + otros;
+      info.appendChild(nameEl); info.appendChild(tagsEl); info.appendChild(otrosEl); info.appendChild(btnRow);
+    } else {
+      info.appendChild(nameEl); info.appendChild(tagsEl); info.appendChild(btnRow);
+    }
+
+    div.appendChild(avatar);
+    div.appendChild(info);
     list.appendChild(div);
   });
   updateCounts();
 }
 
+var _autoSaveTimer = null;
+function autoSave() {
+  if(_autoSaveTimer) clearTimeout(_autoSaveTimer);
+  _autoSaveTimer = setTimeout(saveAttend, 1500);
+}
+
 function updateCounts(){
-  const items=document.querySelectorAll('.attend-item');
-  let p=0,a=0;
-  items.forEach(el=>{if(el.dataset.status==='present')p++;else if(el.dataset.status==='absent')a++;});
-  document.getElementById('cP').textContent=p;
-  document.getElementById('cA').textContent=a;
-  document.getElementById('cT').textContent=items.length;
+  var items = document.querySelectorAll('#attendList .attend-item');
+  var arrived = 0, picked = 0, absent = 0;
+  items.forEach(function(el){
+    if(el.dataset.status === 'absent') absent++;
+    else if(el.dataset.arrived === '1') arrived++;
+    if(el.dataset.picked === '1') picked++;
+  });
+  var cP = document.getElementById('cP');
+  var cA = document.getElementById('cA');
+  var cT = document.getElementById('cT');
+  if(cP) cP.textContent = arrived + (picked ? ' (' + picked + ' 🏠)' : '');
+  if(cA) cA.textContent = absent;
+  if(cT) cT.textContent = items.length;
 }
 
 async function saveAttend(){
   if(!monitorGroup)return;
   const all=getAllDays(),di=Math.max(0,Math.min(dayIdx,all.length-1));
   const day=all[di];
-  const statuses={};
-  document.querySelectorAll('.attend-item').forEach(el=>{statuses[el.dataset.nombre]=el.dataset.status;});
+  const data={};
+  document.querySelectorAll('#attendList .attend-item').forEach(function(el){
+    if(!el.dataset.nombre) return;
+    data[el.dataset.nombre] = {
+      status: el.dataset.status || 'pending',
+      arrived: el.dataset.arrived === '1',
+      picked: el.dataset.picked === '1',
+      aComedor: el.dataset.acomedor === '1',
+      obs: el.dataset.obs || ''
+    };
+  });
   const key=attendKey(monitorGroup.code,dateStr(day));
-  try{localStorage.setItem(key,JSON.stringify(statuses));}catch(e){}
-  if(window._fbDB){try{await window._fbDB.collection('attendance').doc(key).set({data:JSON.stringify(statuses),updated:new Date()});}catch(e){}}
+  try{localStorage.setItem(key,JSON.stringify(data));}catch(e){}
+  if(window._fbDB){try{await window._fbDB.collection('attendance').doc(key).set({data:JSON.stringify(data),updated:new Date()});}catch(e){}}
   const msg=document.getElementById('savedMsg');msg.style.display='block';setTimeout(()=>msg.style.display='none',2000);
   if(window._fbDB) showToast('🔥 Guardado en Firebase ✅','success');
   else showToast('💾 Guardado localmente','info');
